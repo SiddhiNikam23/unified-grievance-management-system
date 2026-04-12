@@ -1,0 +1,22 @@
+/backend/node_modules
+/scripts/__pycache__
+
+# Environment variables
+.env
+backend/.env
+client/.env
+admin/.env
+
+# MongoDB local installation
+mongodb/data/
+mongodb/logs/
+mongodb/bin/
+
+# OS files
+.DS_Store
+
+# Sensitive files (DO NOT COMMIT)
+ADMIN-CREDENTIALS.md
+*-credentials.txt
+*.pem
+*.key
