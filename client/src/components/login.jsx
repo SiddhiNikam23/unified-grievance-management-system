@@ -44,7 +44,7 @@ export default function LoginForm() {
       backgroundRepeat: "no-repeat"
     }}
 >
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-96">
+      <div className="bg-white p-8 sm:p-10 rounded-xl shadow-xl w-full max-w-md sm:max-w-lg min-h-[560px] flex flex-col justify-center">
         {}
         <h2 className="text-2xl font-bold text-center text-gray-800">User Login</h2>
         <p className="text-gray-500 text-center mt-1">

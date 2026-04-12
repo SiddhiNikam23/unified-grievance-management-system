@@ -4,6 +4,7 @@ const Grievance = require("../models/grievance");
 const { searchTweets } = require("./realTwitterScraper");
 const { detectDuplicateComplaints, linkComplaints } = require("./duplicateDetection");
 const { onComplaintRegistered } = require("./notificationEngine");
+const { upsertEvidenceFromComplaint, verifyRecentEvidence } = require("./socialProofEngine");
 
 const parser = new Parser();
 
@@ -380,6 +381,24 @@ async function upsertComplaintFromPost(post) {
   }).lean();
 
   if (existing) {
+    try {
+      await upsertEvidenceFromComplaint({
+        grievanceCode: existing.grievanceCode,
+        platform: post.platform,
+        postId: post.postId,
+        postUrl: post.url,
+        username: post.username,
+        complaintText: text,
+        issueType: existing.issueType || issue.issueType,
+        locationText: existing.locationText || locationText,
+        hashtags,
+        validityScore,
+        sourceProbe: "ingestion"
+      });
+    } catch (proofError) {
+      console.warn("[social-proof] existing-upsert failed:", proofError.message);
+    }
+
     seenPostKeys.set(postKey, Date.now());
     return { status: "ignored", reason: "already-stored" };
   }
@@ -442,6 +461,24 @@ async function upsertComplaintFromPost(post) {
   });
 
   const saved = await grievance.save();
+
+  try {
+    await upsertEvidenceFromComplaint({
+      grievanceCode: saved.grievanceCode,
+      platform: post.platform,
+      postId: post.postId,
+      postUrl: post.url,
+      username: post.username,
+      complaintText: text,
+      issueType: issue.issueType,
+      locationText,
+      hashtags,
+      validityScore,
+      sourceProbe: "ingestion"
+    });
+  } catch (proofError) {
+    console.warn("[social-proof] capture failed:", proofError.message);
+  }
 
   try {
     await onComplaintRegistered(saved);
@@ -619,6 +656,15 @@ async function scanAndStoreSocialComplaints() {
 
   scanResult.completedAt = nowIso();
   keepRecentSeen();
+
+  try {
+    const verificationReport = await verifyRecentEvidence(
+      Number(process.env.SOCIAL_PROOF_VERIFY_LIMIT || 20)
+    );
+    scanResult.verification = verificationReport;
+  } catch (verificationError) {
+    scanResult.verification = { error: verificationError.message };
+  }
 
   return scanResult;
 }
