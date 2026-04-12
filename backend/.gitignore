@@ -1,0 +1,49 @@
+<<<<<<< HEAD
+/backend/node_modules
+/scripts/__pycache__
+
+# Environment variables
+.env
+backend/.env
+client/.env
+admin/.env
+
+# MongoDB local installation
+mongodb/data/
+mongodb/logs/
+mongodb/bin/
+
+# OS files
+.DS_Store
+
+# Sensitive files (DO NOT COMMIT)
+ADMIN-CREDENTIALS.md
+*-credentials.txt
+*.pem
+*.key
+=======
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+>>>>>>> 15c1296 (Update NagrikConnect-AI with latest code)
