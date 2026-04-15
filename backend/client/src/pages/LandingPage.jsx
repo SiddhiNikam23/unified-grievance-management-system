@@ -7,6 +7,7 @@ import Services from "../components/Services";
 import OnlineServices from "../components/OnlineServices";
 import HeroSection from "../components/HeroSection";
 import { toast, ToastContainer } from "react-toastify";
+import Tour from "../components/Tour";
 const LandingPage = () => {
   const navigate = useNavigate();
     useEffect(() => {
