@@ -4,6 +4,7 @@ const Grievance = require("../models/grievance");
 const { searchTweets } = require("./realTwitterScraper");
 const { detectDuplicateComplaints, linkComplaints } = require("./duplicateDetection");
 const { onComplaintRegistered } = require("./notificationEngine");
+const { calculateBacklogAwareEta } = require("./etaService");
 const { upsertEvidenceFromComplaint, verifyRecentEvidence } = require("./socialProofEngine");
 
 const parser = new Parser();
@@ -415,6 +416,38 @@ async function upsertComplaintFromPost(post) {
     : 0;
 
   const priority = toPriority(sentimentTag, duplicateCount);
+  let etaData;
+
+  try {
+    etaData = await calculateBacklogAwareEta({
+      department: issue.department,
+      priority,
+      complaintText: text,
+      issueType: issue.issueType,
+      subcategory: issue.subcategory,
+      category: issue.category
+    });
+  } catch (etaError) {
+    console.warn("[social-listener] ETA calculation failed:", etaError.message);
+    etaData = {
+      department: "GENERAL",
+      departmentLabel: "General Department",
+      status: "NORMAL",
+      baseTimeDays: 4,
+      backlogCount: 0,
+      backlogDays: 0,
+      finalEtaDays: 4,
+      priorityFactor: 1,
+      priorityLevel: priority.toUpperCase ? priority.toUpperCase() : priority,
+      aiFactor: 1,
+      aiLevel: "normal",
+      aiReason: "Fallback ETA used after calculation failure.",
+      historicalAverageDays: null,
+      capacityPerDay: 40,
+      message: "ETA will be updated shortly.",
+      calculatedAt: new Date()
+    };
+  }
 
   const grievance = new Grievance({
     complainantName: post.username || "Unknown User",
@@ -437,6 +470,21 @@ async function upsertComplaintFromPost(post) {
     priorityReason: duplicateCount >= 2
       ? "Raised due to repeated complaints from social media"
       : `Detected as ${sentimentTag.toLowerCase()} social complaint`,
+    serviceDepartmentKey: etaData.department,
+    serviceDepartmentLabel: etaData.departmentLabel,
+    etaDepartmentKey: etaData.department,
+    etaDepartmentLabel: etaData.departmentLabel,
+    etaBaseDays: etaData.baseTimeDays,
+    etaCapacityPerDay: etaData.capacityPerDay,
+    etaBacklogCount: etaData.backlogCount,
+    etaBacklogDays: etaData.backlogDays,
+    etaHistoricalDays: etaData.historicalAverageDays,
+    etaPriorityFactor: etaData.priorityFactor,
+    etaAiFactor: etaData.aiFactor,
+    etaFinalDays: etaData.finalEtaDays,
+    etaStatus: etaData.status,
+    etaMessage: etaData.message,
+    etaCalculatedAt: etaData.calculatedAt,
     sentimentTag,
     validityScore,
     moderationStatus: "Pending",
@@ -523,7 +571,8 @@ async function upsertComplaintFromPost(post) {
     grievanceCode: saved.grievanceCode,
     priority: saved.priority,
     validityScore,
-    platform: post.platform
+    platform: post.platform,
+    eta: etaData
   };
 }
 

@@ -82,7 +82,22 @@ router.get("/complaints", async (req, res) => {
       timestamp: g.dateOfReceipt || g.createdAt,
       status: g.currentStatus,
       moderation_status: g.moderationStatus || "Pending",
-      is_duplicate: Boolean(g.isDuplicate)
+      is_duplicate: Boolean(g.isDuplicate),
+      eta: {
+        department: g.etaDepartmentKey || g.serviceDepartmentKey || g.department || "GENERAL",
+        department_label: g.etaDepartmentLabel || g.serviceDepartmentLabel || g.department || "General Department",
+        status: g.etaStatus || "NORMAL",
+        base_time_days: g.etaBaseDays ?? null,
+        backlog_delay_days: g.etaBacklogDays ?? null,
+        final_eta_days: g.etaFinalDays ?? null,
+        backlog_count: g.etaBacklogCount ?? 0,
+        capacity_per_day: g.etaCapacityPerDay ?? null,
+        historical_average_days: g.etaHistoricalDays ?? null,
+        priority_factor: g.etaPriorityFactor ?? null,
+        ai_factor: g.etaAiFactor ?? null,
+        message: g.etaMessage || "ETA will be calculated when available.",
+        calculated_at: g.etaCalculatedAt || g.updatedAt || g.createdAt
+      }
     }));
 
     res.json({ success: true, complaints: payload });

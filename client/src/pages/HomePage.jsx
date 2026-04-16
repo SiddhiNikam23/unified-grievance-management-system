@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FiMenu, FiX, FiGrid, FiBell, FiMessageCircle, FiMonitor, FiPlus, FiSearch, FiActivity, FiGlobe, FiLogOut } from "react-icons/fi";
+import { FiMenu, FiX, FiGrid, FiBell, FiMessageCircle, FiPlus, FiSearch, FiActivity, FiGlobe, FiLogOut } from "react-icons/fi";
 import Footer from "../components/Footer";
 import HomeHeader from "../components/HomeHeader";
 import Home from "../components/Home";
-import Complaints from "../components/Complaints";
 import Status from "../components/Status";
 import Contact from "../components/Contact";
 import NewGrievanceOrganisation from "../components/NewGrievanceOrganisation";
@@ -47,7 +46,7 @@ function Sidebar({ setActivePage, activePage }) {
     { key: "home", id: "sidebar-home", text: t("appealDashboard"), icon: FiGrid },
     { key: "contact", id: "sidebar-contact", text: "Post-events", icon: FiBell },
     { key: "chatbot", id: "sidebar-chatbot", text: t("chatbot"), icon: FiMessageCircle },
-    { key: "Submit", id: "sidebar-Submit", text: "Appeal Dashboard", icon: FiMonitor },
+    { key: "Submit", id: "sidebar-Submit", text: "Appeal Dashboard", icon: FiGrid },
     { key: "newGrievanceOrganisation", id: "sidebar-newGrievanceOrganisation", text: t("lodgeGrievance"), icon: FiPlus },
     { key: "status", id: "sidebar-status", text: t("checkStatus"), icon: FiSearch },
     { key: "accountDetails", id: "sidebar-accountDetails", text: t("accountActivity"), icon: FiActivity },
@@ -184,6 +183,7 @@ function HomePage() {
     }
     switch (activePage) {
       case "home":
+      case "home":
         return <Home key={user?.email} />;
       case "Submit":
         return <Complaints />;
@@ -217,7 +217,7 @@ function HomePage() {
     <div className="min-h-screen bg-[#ece9e4] p-1 sm:p-2 lg:p-3">
       <ToastContainer autoClose={3000} position="top-center" />
 
-      <div className="mx-auto min-h-[calc(100vh-8px)] w-[calc(100vw-8px)] max-w-none overflow-hidden rounded-[30px] border border-black/5 bg-[#f7f8fb] shadow-[0_24px_42px_rgba(15,23,42,0.16)] sm:min-h-[calc(100vh-16px)] sm:w-[calc(100vw-16px)] lg:min-h-[calc(100vh-24px)] lg:w-[calc(100vw-24px)]">
+      <div className="mx-auto min-h-[calc(100vh-8px)] w-[calc(100vw-8px)] max-w-none overflow-hidden rounded-[30px] border border-black/5 bg-[#f7f8fb] shadow-[0_24px_42px_rgba(15,23,42,0.16)] sm:min-h-[calc(100vh-16px)] sm:w-[calc(100vw-16px)] lg:h-[calc(100vh-24px)] lg:w-[calc(100vw-24px)]">
         <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 shadow-sm lg:hidden">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-teal-700">Citizen Portal</p>
@@ -255,7 +255,7 @@ function HomePage() {
 
         {!isAuthenticated && (
           <div className="bg-[#f3f5fa] p-4">
-            <HomeHeader />
+            {activePage === "home" && <HomeHeader />}
             <div className="mt-6">{renderContent()}</div>
           </div>
         )}

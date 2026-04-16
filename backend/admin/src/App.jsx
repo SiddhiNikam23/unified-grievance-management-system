@@ -10,12 +10,14 @@ import Login from "./components/login";
 import EmergencyResponse from "./pages/EmergencyResponse";
 import AIPDFAnalyzer from "./components/AIPDFAnalyzer";
 import SocialComplaints from "./pages/SocialComplaints";
+import FuturePrediction from "./pages/FuturePrediction";
+
 const Layout = ({ children }) => (
     <div className="flex h-screen bg-gray-100">
         <Sidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col overflow-hidden">
             <Header />
-            <div className="p-6">{children}</div>
+            <main className="flex-1 overflow-y-auto p-6">{children}</main>
         </div>
     </div>
 );
@@ -67,10 +69,10 @@ function App() {
                     } 
                 />
                 <Route 
-                    path="/social-complaints" 
+                    path="/future-prediction" 
                     element={
                         <ProtectedRoute>
-                            <Layout><SocialComplaints /></Layout>
+                            <Layout><FuturePrediction /></Layout>
                         </ProtectedRoute>
                     } 
                 />
@@ -79,6 +81,14 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <Layout><Quotes /></Layout>
+                        </ProtectedRoute>
+                    } 
+                />
+                <Route 
+                    path="/social-complaints" 
+                    element={
+                        <ProtectedRoute>
+                            <Layout><SocialComplaints /></Layout>
                         </ProtectedRoute>
                     } 
                 />

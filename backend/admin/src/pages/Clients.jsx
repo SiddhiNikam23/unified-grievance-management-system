@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import SummaryCards from "../components/SummaryCards";
 import ClientTable from "../components/ClientTable";
-import GrievanceHeatmap from "../components/GrievanceHeatmap";
+import GrievanceRiskMap from "../components/GrievanceRiskMap";
 const Clients = () => {
   const [grievances, setGrievances] = useState([]);
   const [filteredGrievances, setFilteredGrievances] = useState([]);
   const [adminDepartment, setAdminDepartment] = useState("");
-  const [mapMode, setMapMode] = useState("both");
   useEffect(() => {
     const department = localStorage.getItem('adminDepartment');
     setAdminDepartment(department || "");
@@ -70,26 +69,45 @@ const Clients = () => {
     };
     return departmentMap[code] || code;
   };
+
+  const escalatedCount = filteredGrievances.filter((g) => g.isEscalated).length;
+
   return (
-    <div>
-      {}
-      <div className={`mb-4 p-4 rounded-lg ${
+    <div className="space-y-6">
+      <section data-guide="welcome" className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-cyan-900 p-6 text-white shadow-lg">
+        <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-cyan-300/25 blur-2xl" />
+        <div className="absolute -bottom-16 left-1/3 h-48 w-48 rounded-full bg-sky-400/20 blur-2xl" />
+        <div className="relative flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Government Control Panel</p>
+            <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">Citizen Complaints Intelligence</h1>
+            <p className="mt-2 text-sm text-slate-200 sm:text-base">
+              Track risk hotspots, monitor department queues, and act faster on citizen grievances.
+            </p>
+          </div>
+          <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur">
+            <p className="text-xs uppercase tracking-wider text-cyan-100">Live Complaints</p>
+            <p className="mt-1 text-2xl font-bold">{filteredGrievances.length}</p>
+          </div>
+        </div>
+      </section>
+
+      <div className={`rounded-2xl border p-4 shadow-sm ${
         adminDepartment === 'emergency_response' 
-          ? 'bg-red-100 border-l-4 border-red-600' 
-          : 'bg-blue-100'
+          ? 'border-red-200 bg-red-50' 
+          : 'border-cyan-200 bg-cyan-50'
       }`}>
-        <h2 className={`text-xl font-bold ${
+        <h2 className={`text-lg font-semibold ${
           adminDepartment === 'emergency_response' 
             ? 'text-red-900' 
-            : 'text-blue-900'
+            : 'text-cyan-900'
         }`}>
-          {adminDepartment === 'emergency_response' && '🚨 '}
-          Department: {getDepartmentFullName(adminDepartment)}
+          Department Access: {getDepartmentFullName(adminDepartment)}
         </h2>
-        <p className={`text-sm ${
+        <p className={`mt-1 text-sm ${
           adminDepartment === 'emergency_response' 
             ? 'text-red-700' 
-            : 'text-blue-700'
+            : 'text-cyan-700'
         }`}>
           {adminDepartment === 'emergency_response' 
             ? `Full system access - Showing all ${filteredGrievances.length} complaints across all departments`
@@ -97,14 +115,14 @@ const Clients = () => {
           }
         </p>
       </div>
-      {}
-      {filteredGrievances.filter(g => g.isEscalated).length > 0 && (
-        <div className="mb-4 p-4 bg-red-100 border-l-4 border-red-600 rounded-lg animate-pulse">
+
+      {escalatedCount > 0 && (
+        <div className="rounded-2xl border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 p-4 shadow-sm">
           <div className="flex items-center gap-3">
             <span className="text-3xl">🚨</span>
             <div>
-              <h3 className="text-lg font-bold text-red-900">
-                {filteredGrievances.filter(g => g.isEscalated).length} Critical Escalated Complaint(s)
+              <h3 className="text-lg font-semibold text-red-900">
+                {escalatedCount} Critical Escalated Complaint(s)
               </h3>
               <p className="text-sm text-red-700">
                 These complaints require immediate attention from the Emergency Response Team
@@ -113,49 +131,9 @@ const Clients = () => {
           </div>
         </div>
       )}
+
+      <GrievanceRiskMap grievances={filteredGrievances} adminDepartment={adminDepartment} />
       <SummaryCards grievances={filteredGrievances} />
-
-      <div className="my-5 bg-white border border-gray-200 rounded-xl shadow-sm">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Area Heatmap View</h3>
-            <p className="text-sm text-gray-600">Track complaint concentration by geography.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setMapMode("dots")}
-              className={`px-3 py-1.5 text-sm rounded-md border ${
-                mapMode === "dots" ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-300"
-              }`}
-            >
-              Red Dots
-            </button>
-            <button
-              type="button"
-              onClick={() => setMapMode("heat")}
-              className={`px-3 py-1.5 text-sm rounded-md border ${
-                mapMode === "heat" ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-300"
-              }`}
-            >
-              Heat Layer
-            </button>
-            <button
-              type="button"
-              onClick={() => setMapMode("both")}
-              className={`px-3 py-1.5 text-sm rounded-md border ${
-                mapMode === "both" ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-300"
-              }`}
-            >
-              Both
-            </button>
-          </div>
-        </div>
-        <div className="p-4">
-          <GrievanceHeatmap grievances={filteredGrievances} mode={mapMode} />
-        </div>
-      </div>
-
       <ClientTable grievances={filteredGrievances} />
     </div>
   );

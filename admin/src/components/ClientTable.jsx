@@ -156,9 +156,9 @@ const ClientTable = ({ grievances: propGrievances }) => {
     };
 
     return (
-        <div className="mx-auto">
+        <div data-guide="register-complaint" className="mx-auto">
             <FilterTabs grievances={propGrievances || []} setFilteredGrievances={setFilteredGrievances} />
-            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div data-guide="track-status" className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                 <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse">
                     <thead className="bg-gray-50">

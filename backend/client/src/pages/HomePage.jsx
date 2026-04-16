@@ -192,9 +192,7 @@ function HomePage() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
       <ToastContainer autoClose={3000} position="top-center" />
-      {}
-      <HomeHeader />
-      {}
+      {activePage === "home" && <HomeHeader />}
       <div className="lg:hidden flex justify-between items-center p-4 bg-white shadow-md">
         <button onClick={() => setIsSidebarOpen(true)} className="text-2xl focus:outline-none">
           <FiMenu />

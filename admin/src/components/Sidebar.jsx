@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, BarChart3, AlertTriangle, RadioTower, LogOut } from "lucide-react";
+import { Home, BarChart3, AlertTriangle, RadioTower, LogOut, Radar } from "lucide-react";
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -9,6 +9,7 @@ const Sidebar = () => {
     { name: "My Clients", path: "/clients", icon: <Home size={20} /> },
     { name: "Social Complaints", path: "/social-complaints", icon: <RadioTower size={20} /> },
     { name: "Emergency Response", path: "/emergency", icon: <AlertTriangle size={20} /> },
+    { name: "Future Prediction", path: "/future-prediction", icon: <Radar size={20} /> },
     { name: "Insights", path: "/quotes", icon: <BarChart3 size={20} /> },
   ];
 

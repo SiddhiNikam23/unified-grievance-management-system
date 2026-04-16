@@ -3,6 +3,89 @@ import GrievanceRiskMap from "../components/GrievanceRiskMap";
 
 const API_BASE = "http://localhost:5000";
 
+const DEPARTMENT_LABELS = {
+  emergency_response: "Emergency Response Team",
+  financial_services: "Financial Services (Banking Division)",
+  labour_employment: "Labour and Employment",
+  income_tax: "Central Board of Direct Taxes (Income Tax)",
+  posts: "Posts",
+  telecommunications: "Telecommunications",
+  personnel_training: "Personnel and Training",
+  housing_urban: "Housing and Urban Affairs",
+  health_welfare: "Health & Family Welfare"
+};
+
+const DEPARTMENT_KEYWORDS = {
+  financial_services: ["bank", "atm", "loan", "credit", "debit", "upi", "payment", "refund", "account", "card", "fraud"],
+  labour_employment: ["labour", "employment", "salary", "wage", "job", "pf", "epf", "gratuity", "workplace", "contract"],
+  income_tax: ["income tax", "tax", "itr", "refund", "pan", "notice", "assessment", "tds"],
+  posts: ["post", "postal", "courier", "parcel", "speed post", "delivery", "mail", "tracking"],
+  telecommunications: ["telecom", "telecommunications", "network", "internet", "mobile", "signal", "broadband", "call", "tower", "sim", "wifi", "data"],
+  personnel_training: ["recruitment", "transfer", "promotion", "training", "service matter", "cadre", "posting", "appointment"],
+  housing_urban: ["water", "electric", "electricity", "power", "road", "traffic", "sanitation", "waste", "garbage", "sewer", "drain", "pothole", "street", "housing", "urban", "municipal"],
+  health_welfare: ["hospital", "doctor", "medicine", "health", "treatment", "ambulance", "clinic", "welfare", "patient"]
+};
+
+function normalizeDepartment(value) {
+  return String(value || "").trim().toLowerCase().replace(/[\s\-/]+/g, "_");
+}
+
+function resolveDepartmentKey(value) {
+  const normalized = normalizeDepartment(value);
+  if (!normalized) return "";
+  if (DEPARTMENT_LABELS[normalized]) return normalized;
+
+  const aliases = {
+    telecommunication: "telecommunications",
+    telecom: "telecommunications",
+    housing: "housing_urban",
+    urban: "housing_urban",
+    electricity: "housing_urban",
+    water: "housing_urban",
+    road: "housing_urban",
+    postal: "posts",
+    post: "posts",
+    bank: "financial_services",
+    banking: "financial_services",
+    labour: "labour_employment",
+    employment: "labour_employment",
+    income: "income_tax",
+    tax: "income_tax",
+    health: "health_welfare",
+    welfare: "health_welfare"
+  };
+
+  return aliases[normalized] || normalized;
+}
+
+function complaintMatchesDepartment(complaint, departmentKey) {
+  if (!departmentKey || departmentKey === "emergency_response") return true;
+
+  const explicitDepartment = resolveDepartmentKey(
+    complaint.department || complaint.departmentLabel || complaint.assignedDepartment || complaint.department_name || ""
+  );
+  if (explicitDepartment && explicitDepartment === departmentKey) {
+    return true;
+  }
+
+  const text = [
+    complaint.issue_type,
+    complaint.issueType,
+    complaint.content,
+    complaint.description,
+    complaint.platform,
+    complaint.category,
+    complaint.tags
+  ]
+    .flat()
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const keywords = DEPARTMENT_KEYWORDS[departmentKey] || [];
+  return keywords.some((keyword) => text.includes(keyword));
+}
+
 const DEPARTMENTS = [
   "Water Department",
   "Road Maintenance",
@@ -26,6 +109,18 @@ export default function SocialComplaints() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
+  const [adminDepartment, setAdminDepartment] = useState("");
+
+  useEffect(() => {
+    setAdminDepartment(localStorage.getItem("adminDepartment") || "");
+  }, []);
+
+  const effectiveDepartment = useMemo(
+    () => resolveDepartmentKey(adminDepartment || localStorage.getItem("adminDepartment") || ""),
+    [adminDepartment]
+  );
+
+  const departmentLabel = DEPARTMENT_LABELS[effectiveDepartment] || "Your Department";
 
   const fetchComplaints = async () => {
     try {
@@ -124,8 +219,18 @@ export default function SocialComplaints() {
     };
   }, []);
 
+  const filteredComplaints = useMemo(
+    () => complaints.filter((complaint) => complaintMatchesDepartment(complaint, effectiveDepartment)),
+    [complaints, effectiveDepartment]
+  );
+
+  const filteredAlerts = useMemo(
+    () => alerts.filter((alert) => complaintMatchesDepartment(alert, effectiveDepartment)),
+    [alerts, effectiveDepartment]
+  );
+
   const mapGrievances = useMemo(() => {
-    return complaints
+    return filteredComplaints
       .filter((c) => c.coordinates && c.coordinates !== "Unknown")
       .map((c) => ({
         grievanceCode: c.grievanceCode,
@@ -136,9 +241,9 @@ export default function SocialComplaints() {
           longitude: c.coordinates.longitude
         }
       }));
-  }, [complaints]);
+  }, [filteredComplaints]);
 
-  const highPriorityCount = complaints.filter(
+  const highPriorityCount = filteredComplaints.filter(
     (c) => c.priority === "High" || c.priority === "Critical"
   ).length;
 
@@ -164,7 +269,7 @@ export default function SocialComplaints() {
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs uppercase tracking-wide text-slate-500">Total Social Complaints</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{complaints.length}</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{filteredComplaints.length}</p>
           </div>
           <div className="rounded-xl border border-red-200 bg-red-50 p-3">
             <p className="text-xs uppercase tracking-wide text-red-500">High/Critical</p>
@@ -172,16 +277,17 @@ export default function SocialComplaints() {
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
             <p className="text-xs uppercase tracking-wide text-amber-600">Live Alerts</p>
-            <p className="mt-1 text-2xl font-bold text-amber-700">{alerts.length}</p>
+            <p className="mt-1 text-2xl font-bold text-amber-700">{filteredAlerts.length}</p>
           </div>
         </div>
+        <p className="mt-3 text-xs text-slate-500">Showing complaints for: {departmentLabel}</p>
       </section>
 
-      {alerts.length > 0 && (
+      {filteredAlerts.length > 0 && (
         <section className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-red-700">Urgent Alert Feed</h2>
           <div className="mt-2 space-y-2">
-            {alerts.slice(0, 5).map((alert) => (
+            {filteredAlerts.slice(0, 5).map((alert) => (
               <div key={`${alert.grievanceCode}-${alert.timestamp}`} className="rounded-lg border border-red-200 bg-white p-3">
                 <p className="text-sm font-semibold text-red-800">{alert.issueType} - {alert.priority}</p>
                 <p className="text-sm text-slate-700">{alert.location}: {alert.content}</p>
@@ -191,7 +297,7 @@ export default function SocialComplaints() {
         </section>
       )}
 
-      <GrievanceRiskMap grievances={mapGrievances} adminDepartment="emergency_response" />
+      <GrievanceRiskMap grievances={mapGrievances} adminDepartment={effectiveDepartment} />
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
@@ -220,12 +326,12 @@ export default function SocialComplaints() {
                 <tr>
                   <td colSpan={9} className="px-4 py-6 text-center text-slate-500">Loading...</td>
                 </tr>
-              ) : complaints.length === 0 ? (
+              ) : filteredComplaints.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-slate-500">No social complaints found yet.</td>
+                  <td colSpan={9} className="px-4 py-6 text-center text-slate-500">No social complaints found for {departmentLabel.toLowerCase()}.</td>
                 </tr>
               ) : (
-                complaints.map((item) => (
+                filteredComplaints.map((item) => (
                   <tr key={item.grievanceCode} className="border-b border-slate-100 align-top">
                     <td className="px-4 py-3 text-sm font-semibold text-slate-800">{item.grievanceCode}</td>
                     <td className="px-4 py-3 text-sm capitalize text-slate-700">{item.platform}</td>

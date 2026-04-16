@@ -120,6 +120,17 @@ function GrievanceDetailPage() {
         "Resolution Provided": "bg-gray-100 text-gray-800",
         "Rejected": "bg-red-100 text-red-800"
     };
+
+    const hasEta = grievance?.etaFinalDays !== undefined && grievance?.etaFinalDays !== null;
+    const isOverloaded = grievance?.etaStatus === "OVERLOADED";
+    const etaStartDate = grievance?.etaCalculatedAt
+        ? new Date(grievance.etaCalculatedAt)
+        : new Date(grievance?.createdAt || Date.now());
+    const etaDays = Number(grievance?.etaFinalDays || 0);
+    const predictedResolutionDate = hasEta
+        ? new Date(etaStartDate.getTime() + etaDays * 24 * 60 * 60 * 1000)
+        : null;
+
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
             <div className="flex-grow container mx-auto px-4 py-8 max-w-5xl">
@@ -145,7 +156,55 @@ function GrievanceDetailPage() {
                             {grievance.currentStatus}
                         </span>
                     </div>
-                    { }
+
+                    {hasEta && (
+                        <div
+                            className={`mb-6 rounded-xl border p-4 ${
+                                isOverloaded
+                                    ? "border-red-200 bg-red-50"
+                                    : "border-emerald-200 bg-emerald-50"
+                            }`}
+                        >
+                            <h3 className={`text-lg font-bold ${isOverloaded ? "text-red-700" : "text-emerald-700"}`}>
+                                Estimated Resolution
+                            </h3>
+                            <p className="mt-2 text-gray-800">
+                                Predicted Date:
+                                <span className="ml-2 font-semibold">
+                                    {predictedResolutionDate?.toLocaleDateString("en-IN", {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric"
+                                    })}
+                                </span>
+                            </p>
+                            <p className="mt-1 text-sm text-gray-700">
+                                Base Time: {grievance.etaBaseDays ?? 0} days | Backlog Delay: {grievance.etaBacklogDays ?? 0} days | Final ETA: {grievance.etaFinalDays ?? 0} days
+                            </p>
+
+                            {isOverloaded ? (
+                                <p className="mt-3 font-semibold text-red-700">
+                                    Too many complaints are currently in queue. Your complaint may take longer than usual.
+                                </p>
+                            ) : (
+                                <p className="mt-3 font-semibold text-emerald-700">
+                                    Department load is normal. Your complaint is expected within standard timeline.
+                                </p>
+                            )}
+
+                            {grievance?.etaMessage && (
+                                <p className="mt-2 text-sm text-gray-700">{grievance.etaMessage}</p>
+                            )}
+                        </div>
+                    )}
+
+                    {!hasEta && (
+                        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                            <p className="font-semibold text-amber-700">
+                                ETA is not available for this complaint yet.
+                            </p>
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                         <div>
                             <p className="text-sm text-gray-500 mb-1">Department</p>

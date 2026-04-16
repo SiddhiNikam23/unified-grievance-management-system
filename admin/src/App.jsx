@@ -10,6 +10,7 @@ import Login from "./components/login";
 import EmergencyResponse from "./pages/EmergencyResponse";
 import AIPDFAnalyzer from "./components/AIPDFAnalyzer";
 import SocialComplaints from "./pages/SocialComplaints";
+import FuturePrediction from "./pages/FuturePrediction";
 
 const Layout = ({ children }) => (
     <div className="flex h-screen bg-gray-100">
@@ -64,6 +65,14 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <Layout><EmergencyResponse /></Layout>
+                        </ProtectedRoute>
+                    } 
+                />
+                <Route 
+                    path="/future-prediction" 
+                    element={
+                        <ProtectedRoute>
+                            <Layout><FuturePrediction /></Layout>
                         </ProtectedRoute>
                     } 
                 />
