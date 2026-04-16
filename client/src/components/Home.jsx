@@ -84,15 +84,15 @@ export default function Home() {
           },
           credentials: "include",
         });
-        
+
         if (userResponse.status === 200) {
           const userData = await userResponse.json();
           console.log("Current user:", userData.email);
-          
+
           // Only fetch grievances if user changed or first load
           if (!currentUser || currentUser !== userData.email) {
             setCurrentUser(userData.email);
-            
+
             const response = await fetch("http://localhost:5000/grievance/", {
               method: "GET",
               headers: {
@@ -100,20 +100,20 @@ export default function Home() {
               },
               credentials: "include",
             });
-            
+
             if (response.status === 200) {
               const data = await response.json();
-              
+
               // Sort: Move resolved/resolution provided to bottom
               const sortedData = data.sort((a, b) => {
                 const aResolved = a.currentStatus === 'Resolved' || a.currentStatus === 'Resolution Provided';
                 const bResolved = b.currentStatus === 'Resolved' || b.currentStatus === 'Resolution Provided';
-                
+
                 if (aResolved && !bResolved) return 1;
                 if (!aResolved && bResolved) return -1;
                 return 0;
               });
-              
+
               console.log("Fetched grievances for user:", userData.email, sortedData);
               setGrievances(sortedData);
               setCurrentPage(1);
@@ -134,9 +134,9 @@ export default function Home() {
         setCurrentUser(null);
       }
     };
-    
+
     fetchUserAndGrievances();
-    
+
     // Set up an interval to check for user changes (in case of logout/login without navigation)
     const interval = setInterval(() => {
       const token = getCookie("token");
@@ -149,7 +149,7 @@ export default function Home() {
         fetchUserAndGrievances();
       }
     }, 2000);
-    
+
     return () => clearInterval(interval);
   }, [currentUser]);
   return (
@@ -166,7 +166,7 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-4 px-0 sm:grid-cols-3">
+      <div id="dashboard-stats" className="grid grid-cols-1 gap-4 px-0 sm:grid-cols-3">
         {cardData.map((card, index) => (
           <motion.div
             key={card.key}
@@ -194,7 +194,7 @@ export default function Home() {
             <p className="text-sm text-slate-500">Recent complaints filed under your account</p>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div id="grievance-table" className="overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead className="bg-slate-100 text-slate-800">
               <tr>
@@ -210,9 +210,8 @@ export default function Home() {
               {currentEntries.map((grievance, index) => (
                 <tr
                   key={grievance.id}
-                  className={`cursor-pointer border-b border-slate-100 transition-colors hover:bg-teal-50 ${
-                    index % 2 === 0 ? "bg-slate-50/40" : "bg-white"
-                  }`}
+                  className={`cursor-pointer border-b border-slate-100 transition-colors hover:bg-teal-50 ${index % 2 === 0 ? "bg-slate-50/40" : "bg-white"
+                    }`}
                   onClick={() => window.location.href = `/grievance/${grievance.grievanceCode}`}
                 >
                   <td className="px-4 py-4 text-slate-700">{indexOfFirstEntry + index + 1}</td>
@@ -242,11 +241,10 @@ export default function Home() {
           <button
             onClick={prevPage}
             disabled={currentPage === 1}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-              currentPage === 1
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${currentPage === 1
                 ? "cursor-not-allowed bg-slate-200 text-slate-400"
                 : "bg-slate-900 text-white hover:bg-slate-800"
-            }`}
+              }`}
           >
             {t("prev")}
           </button>
@@ -256,11 +254,10 @@ export default function Home() {
           <button
             onClick={nextPage}
             disabled={currentPage === Math.ceil(grievances.length / entriesPerPage)}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-              currentPage === Math.ceil(grievances.length / entriesPerPage)
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${currentPage === Math.ceil(grievances.length / entriesPerPage)
                 ? "cursor-not-allowed bg-slate-200 text-slate-400"
                 : "bg-slate-900 text-white hover:bg-slate-800"
-            }`}
+              }`}
           >
             {t("next")}
           </button>

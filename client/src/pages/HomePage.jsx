@@ -19,8 +19,11 @@ import { useNavigate } from 'react-router';
 import { deleteCookie, getCookie } from "../utilities/cookie";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useTour } from "../context/TourContext";
 import { useLanguage } from "../context/LanguageContext";
 import { getTranslation } from "../translations/translations";
+import { useAuth } from "../context/AuthContext"; // ✅ Added AuthContext
+
 function Sidebar({ setActivePage, activePage }) {
   const navigate = useNavigate();
   const { language, changeLanguage } = useLanguage();
@@ -30,26 +33,24 @@ function Sidebar({ setActivePage, activePage }) {
     { code: "hi", name: "हिंदी", flag: "🇮🇳" },
     { code: "mr", name: "मराठी", flag: "🇮🇳" }
   ];
-  function logout() {
-    fetch("http://localhost:5000/user/logout", {
-      method: "GET",
-      credentials: "include",
-    })
+  const { logout: globalLogout } = useAuth(); // ✅ Use global logout
+
+  function handleLogout() {
+    globalLogout()
       .then(() => {
         localStorage.setItem("showLoginToast", "true");
-        deleteCookie("token");
         navigate("/");
       })
       .catch(err => console.error("Logout error", err));
   }
   const items = [
-    { key: "home", text: t("appealDashboard"), icon: FiGrid },
-    { key: "contact", text: "Post-events", icon: FiBell },
-    { key: "chatbot", text: t("chatbot"), icon: FiMessageCircle },
-    { key: "Submit", text: "Appeal Dashboard", icon: FiMonitor },
-    { key: "newGrievanceOrganisation", text: t("lodgeGrievance"), icon: FiPlus },
-    { key: "status", text: t("checkStatus"), icon: FiSearch },
-    { key: "accountDetails", text: t("accountActivity"), icon: FiActivity },
+    { key: "home", id: "sidebar-home", text: t("appealDashboard"), icon: FiGrid },
+    { key: "contact", id: "sidebar-contact", text: "Post-events", icon: FiBell },
+    { key: "chatbot", id: "sidebar-chatbot", text: t("chatbot"), icon: FiMessageCircle },
+    { key: "Submit", id: "sidebar-Submit", text: "Appeal Dashboard", icon: FiMonitor },
+    { key: "newGrievanceOrganisation", id: "sidebar-newGrievanceOrganisation", text: t("lodgeGrievance"), icon: FiPlus },
+    { key: "status", id: "sidebar-status", text: t("checkStatus"), icon: FiSearch },
+    { key: "accountDetails", id: "sidebar-accountDetails", text: t("accountActivity"), icon: FiActivity },
   ];
 
   return (
@@ -62,12 +63,14 @@ function Sidebar({ setActivePage, activePage }) {
         {items.map((item) => (
           <SidebarItem
             key={`${item.key}-${item.text}`}
+            id={item.id}
             icon={item.icon}
             text={item.text}
             isActive={activePage === item.key}
             onClick={() => setActivePage(item.key)}
           />
         ))}
+        {/* ... rest of the sidebar ... */}
 
         <li className="mt-8 border-t border-white/20 pt-6">
           <div className="mb-3 flex items-center gap-2 text-base font-semibold">
@@ -91,23 +94,36 @@ function Sidebar({ setActivePage, activePage }) {
           icon={FiLogOut}
           text={t("signOut")}
           special
-          onClick={logout}
+          onClick={handleLogout}
         />
+
+        <li className="mt-4 border-t border-white/10 pt-4">
+          <button
+            onClick={() => {
+              localStorage.removeItem("nagrik_dash_tour_completed");
+              window.location.reload();
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium text-cyan-200/80 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <FiActivity className="text-lg" />
+            <span>Re-run Guided Tour</span>
+          </button>
+        </li>
       </ul>
     </div>
   );
 }
-function SidebarItem({ icon: Icon, text, special, isActive, onClick }) {
+function SidebarItem({ id, icon: Icon, text, special, isActive, onClick }) {
   return (
     <li
+      id={id}
       onClick={onClick}
-      className={`group flex cursor-pointer items-center rounded-2xl px-4 py-3 text-base transition-all duration-200 ${
-        special
+      className={`group flex cursor-pointer items-center rounded-2xl px-4 py-3 text-base transition-all duration-200 ${special
           ? "mt-4 border border-rose-300/30 bg-rose-500/90 text-white hover:bg-rose-500"
           : isActive
-          ? "bg-[#5aaeff]/70 text-white shadow-[0_0_28px_rgba(90,174,255,0.82)]"
-          : "text-cyan-100/95 hover:bg-white/10 hover:text-white"
-      }`}
+            ? "bg-[#5aaeff]/70 text-white shadow-[0_0_28px_rgba(90,174,255,0.82)]"
+            : "text-cyan-100/95 hover:bg-white/10 hover:text-white"
+        }`}
     >
       <div className="flex items-center gap-3">
         <Icon className={`text-[18px] ${isActive ? "text-white" : "text-cyan-100"}`} />
@@ -117,6 +133,8 @@ function SidebarItem({ icon: Icon, text, special, isActive, onClick }) {
   );
 }
 function HomePage() {
+  const { startDashboardTour, isTourActive } = useTour();
+  
   useEffect(() => {
     const showToast = localStorage.getItem("showLoginToast");
     const profileUpdateToast = localStorage.getItem("showProfileUpdateToast");
@@ -129,33 +147,28 @@ function HomePage() {
   }, []);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activePage, setActivePage] = useState("home");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userEmail, setUserEmail] = useState(null);
+  
+  // ✅ Get Auth state from context
+  const { isAuthenticated, user, isLoading, startTour } = useAuth();
   const navigate = useNavigate();
+
+  // DASHBOARD TOUR TRIGGER (PRESERVED LOGIC)
   useEffect(() => {
-    const token = getCookie("token");
-    console.log("Token", token);
-    setIsAuthenticated(!!token);
-    
-    // Fetch user info to track user changes
-    if (token) {
-      fetch("http://localhost:5000/user/username", {
-        method: "GET",
-        credentials: "include",
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.email) {
-            setUserEmail(data.email);
-            console.log("User email set:", data.email);
-          }
-        })
-        .catch(err => console.error("Error fetching user:", err));
-    } else {
-      setUserEmail(null);
+    if (user?.email) {
+      console.log("User detected in dashboard:", user.email);
+      
+      const hasSeenDashTour = localStorage.getItem("nagrik_dash_tour_completed");
+      if (!hasSeenDashTour && !isTourActive) {
+          // Wait a moment for dashboard components to mount
+          setTimeout(() => {
+              startDashboardTour();
+          }, 1000);
+      }
     }
-  }, []);
+  }, [user, isTourActive, startDashboardTour]);
   const renderContent = () => {
+    if (isLoading) return <div className="p-10 text-center">Loading Dashboard...</div>;
+
     if (!isAuthenticated) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -171,7 +184,7 @@ function HomePage() {
     }
     switch (activePage) {
       case "home":
-        return <Home key={userEmail} />;
+        return <Home key={user?.email} />;
       case "Submit":
         return <Complaints />;
       case "status":
@@ -195,9 +208,9 @@ function HomePage() {
       case "accountDetails":
         return <AccountDetails />;
       case "chatbot":
-        return <Chatbot setActivePage={setActivePage} />; 
+        return <Chatbot setActivePage={setActivePage} />;
       default:
-        return <Home key={userEmail} />;
+        return <Home key={user?.email} />;
     }
   };
   return (
@@ -216,13 +229,13 @@ function HomePage() {
         </div>
 
         {isAuthenticated && (
-          <div className="flex flex-1 flex-col lg:flex-row">
-            <aside className="hidden lg:block lg:min-h-[calc(100vh-48px)] lg:w-[280px] xl:w-[300px]">
+          <div className={`flex flex-1 flex-col lg:flex-row h-full ${isTourActive ? "overflow-visible" : "overflow-hidden"}`}>
+            <aside className={`hidden lg:block lg:min-h-[calc(100vh-48px)] lg:w-[280px] xl:w-[300px] ${isTourActive ? "overflow-visible z-[2002]" : "overflow-hidden"}`}>
               <Sidebar setActivePage={setActivePage} activePage={activePage} />
             </aside>
             {isSidebarOpen && (
               <div className="fixed inset-0 z-50 flex bg-black/50">
-                <div className="flex h-full w-80 flex-col shadow-md">
+                <div className={`flex h-full w-80 flex-col shadow-md ${isTourActive ? "overflow-visible" : "overflow-hidden"}`}>
                   <div className="bg-[#0f5167] p-2">
                     <button onClick={() => setIsSidebarOpen(false)} className="self-end p-3 text-xl text-white">
                       <FiX />
@@ -233,7 +246,7 @@ function HomePage() {
                 <div className="flex-grow" onClick={() => setIsSidebarOpen(false)}></div>
               </div>
             )}
-            <main className="flex-1 bg-[#f3f5fa] p-4 sm:p-6 lg:p-8">
+            <main id="dashboard-welcome" className="flex-1 bg-[#f3f5fa] p-4 sm:p-6 lg:p-8 overflow-y-auto">
               <HomeHeader />
               <div className="mt-6">{renderContent()}</div>
             </main>

@@ -15,7 +15,7 @@ const Services = () => {
 
   return (
     // ✅ ID ADDED HERE
-    <section id="services" className="bg-blue-800 text-white py-20 px-6 md:px-20">
+    <section id="tour-services" className="bg-blue-800 text-white py-20 px-6 md:px-20">
       
       <motion.div
         className="text-center mb-16"

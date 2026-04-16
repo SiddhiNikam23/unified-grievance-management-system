@@ -16,11 +16,18 @@ import Contact from "./components/Contact";
 import { ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import Header from './components/Header';
+import TourOverlay from './components/TourOverlay';
+import AIAvatar from './components/AIAvatar';
+import TourController from './components/TourController';
+
 function App() {
   const location = useLocation();
   const showNavbar = ["/", "/complaints", "/faqs", "/contact","/how-it-works"].includes(location.pathname);
   return (
     <div>
+      <TourOverlay />
+      <AIAvatar />
+      <TourController />
       {showNavbar ? <Navbar /> : <Header />}
       <ToastContainer position="top-right" autoClose={3000} />
       <Routes>

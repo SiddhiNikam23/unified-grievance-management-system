@@ -19,7 +19,7 @@ const HeroSection = () => {
         return () => clearInterval(interval);
     }, []);
     return (
-        <section className="relative h-115 flex items-center justify-center text-white overflow-hidden">
+        <section id="tour-hero" className="relative h-115 flex items-center justify-center text-white overflow-hidden">
             {}
             <div className="absolute inset-0 w-full h-full overflow-hidden">
                 <AnimatePresence>
@@ -51,6 +51,20 @@ const HeroSection = () => {
                     <p className="mt-4 text-lg">
                         {t("heroSubtitle")}
                     </p>
+                    
+                    {/* Permanent Tour Trigger */}
+                    <div className="mt-8">
+                        <button
+                            onClick={() => {
+                                localStorage.removeItem("nagrik_tour_completed");
+                                window.location.reload();
+                            }}
+                            className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/30 px-8 py-3 rounded-full font-bold text-sm tracking-wide transition-all active:scale-95 shadow-lg flex items-center gap-2 mx-auto"
+                        >
+                            <span className="text-teal-400">✧</span>
+                            Take the Guided Tour
+                        </button>
+                    </div>
                 </motion.div>
             </div>
         </section>

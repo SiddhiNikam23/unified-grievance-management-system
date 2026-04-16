@@ -4,10 +4,15 @@ const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const { setUser, getUser } = require('../authservice');
 const { checkLogin } = require('../middlewares/auth');
-router.post('/signup', async (req, res)=>{
+
+
+// ======================= SIGNUP =======================
+router.post('/signup', async (req, res) => {
     try {
-        const hashPassword = bcrypt.hashSync(req.body.password, 10);
-        const user = await User.create({ 
+        // ✅ ASYNC HASH
+        const hashPassword = await bcrypt.hash(req.body.password, 10);
+
+        const user = await User.create({
             name: req.body.name,
             email: req.body.email,
             password: hashPassword,
@@ -18,107 +23,191 @@ router.post('/signup', async (req, res)=>{
             state: req.body.state,
             pincode: req.body.pincode
         });
-        return res.status(200).json(user);
+
+        // ✅ REMOVE PASSWORD
+        const { password, ...safeUser } = user._doc;
+
+        return res.status(200).json(safeUser);
+
     } catch (error) {
         console.error("Signup error:", error);
         return res.status(400).json({ message: error.message || "Error creating user" });
     }
-})
-router.post('/login', async (req, res)=>{
-    const email = req.body.email;
-    const user = await User.findOne({email});
-    if(!user){
-        return res.status(404).json({message: "User not found"});
+});
+
+
+// ======================= LOGIN =======================
+router.post('/login', async (req, res) => {
+    try {
+        const email = req.body.email;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // ✅ ASYNC COMPARE
+        const validPassword = await bcrypt.compare(req.body.password, user.password);
+
+        if (!validPassword) {
+            return res.status(401).json({ message: "Invalid Password" });
+        }
+
+        const token = setUser(user);
+
+        // ✅ SECURE COOKIE
+        res.cookie("token", token, {
+            httpOnly: true,   // 🔥 FIXED
+            secure: false,    // set true in production (HTTPS)
+            sameSite: "Lax",
+            path: "/",
+            maxAge: 2 * 60 * 60 * 1000,
+        });
+
+        // ✅ REMOVE PASSWORD
+        const { password, ...safeUser } = user._doc;
+
+        return res.status(200).json({
+            user: safeUser
+        });
+
+    } catch (error) {
+        console.error("Login error:", error);
+        return res.status(500).json({ message: "Server error" });
     }
-    const validPassword = bcrypt.compareSync(req.body.password, user.password);
-    if(!validPassword){
-        return res.status(401).json({message: "Invalid Password"});
+});
+
+
+// ======================= CHECK AUTH (NEW) =======================
+router.get('/check-auth', checkLogin, async (req, res) => {
+    try {
+        const user = req.user.user;
+
+        if (!user) {
+            return res.status(401).json({ isAuthenticated: false });
+        }
+
+        // ✅ REMOVE PASSWORD IF EXISTS
+        const { password, ...safeUser } = user;
+
+        return res.status(200).json({
+            isAuthenticated: true,
+            user: safeUser
+        });
+
+    } catch (error) {
+        return res.status(401).json({ isAuthenticated: false });
     }
-    const token =  setUser(user);
-    res.cookie("token", token, {
-        httpOnly: false,
-        secure: false,
-        sameSite: "Lax",
-        path: "/",
-        maxAge: 2 * 60 * 60 * 1000,
-    });
-    return res.status(200).json({token});
-})
-router.get('/token/:token', async (req, res)=>{
+});
+
+
+// ======================= TOKEN DEBUG =======================
+router.get('/token/:token', async (req, res) => {
     const token = req.params.token;
     const user = getUser(token);
-    return res.json(user.user);
-})
-router.get("/logout", async (req, res)=>{
+
+    if (!user) return res.status(404).json({ message: "Invalid token" });
+
+    const { password, ...safeUser } = user.user;
+
+    return res.json(safeUser);
+});
+
+
+// ======================= LOGOUT =======================
+router.get("/logout", async (req, res) => {
     res.clearCookie("token", {
-        httpOnly: false,
+        httpOnly: true, // ✅ FIXED
         secure: false,
         sameSite: "Lax",
         path: "/"
     });
+
     res.status(200).json({ message: "Logged out successfully" });
-})
+});
+
+
+// ======================= PROFILE UPDATE =======================
 router.put("/profileUpdate", checkLogin, async (req, res) => {
     try {
         const userId = req.user.user._id;
+
         const { name, gender, state, district, pincode, address, mobile } = req.body;
-        
-        // Map district to city as the schema uses city but frontend sends district
-        const updateData = { 
-            name, 
-            gender, 
-            state, 
-            city: district, // Mapping
-            pincode, 
-            address, 
-            phone: mobile 
+
+        const updateData = {
+            name,
+            gender,
+            state,
+            city: district,
+            pincode,
+            address,
+            phone: mobile
         };
 
         const updatedUser = await User.findByIdAndUpdate(
-            userId, 
+            userId,
             updateData,
             { new: true, runValidators: true }
         );
-        
+
         if (!updatedUser) {
-            console.log("User not found!");
             return res.status(404).json({ message: "User not found" });
         }
-        
+
         const token = setUser(updatedUser);
+
         res.cookie("token", token, {
-            httpOnly: false,
+            httpOnly: true, // ✅ FIXED
             secure: false,
             sameSite: "Lax",
             path: "/",
         });
-        
-        console.log("Updated User:", updatedUser);
+
+        const { password, ...safeUser } = updatedUser._doc;
+
         return res.status(200).json({
             message: "Profile updated successfully",
-            user: updatedUser
+            user: safeUser
         });
+
     } catch (error) {
         console.error("Error updating profile:", error);
         return res.status(500).json({ message: "Server error", error: error.message });
     }
 });
-router.get("/username", checkLogin, async (req, res)=>{
+
+
+// ======================= USER INFO =======================
+router.get("/username", checkLogin, async (req, res) => {
     const user = req.user.user;
-    if(!user){
-        return res.json({message: "User not found"});
+
+    if (!user) {
+        return res.json({ message: "User not found" });
     }
-    return res.json(user);
-})
-router.get("/profile", checkLogin, async (req, res)=>{
+
+    const { password, ...safeUser } = user;
+
+    return res.json(safeUser);
+});
+
+router.get("/profile", checkLogin, async (req, res) => {
     const user = req.user.user;
-    if(!user){
-        return res.status(404).json({message: "User not found"});
+
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
     }
-    return res.json(user);
-})
-router.get('/allusers/contact', async (req, res)=>{
-    const users = await User.find({});
+
+    const { password, ...safeUser } = user;
+
+    return res.json(safeUser);
+});
+
+
+// ======================= ALL USERS =======================
+router.get('/allusers/contact', async (req, res) => {
+    const users = await User.find({}).select("-password"); // ✅ FIXED
     return res.json(users);
-})
+});
+
+
 module.exports = router;

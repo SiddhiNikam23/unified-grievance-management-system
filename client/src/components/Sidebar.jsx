@@ -5,16 +5,16 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const { language } = useLanguage();
   const t = (key) => getTranslation(language, key);
-  function logout(){
+  function logout() {
     console.log("Logging out");
     deleteCookie('token');
-    if(!document.cookie.includes('token')) navigate('/');
+    if (!document.cookie.includes('token')) navigate('/');
   }
   return (
     <div className="w-64 p-5 rounded-2xl bg-gradient-to-b from-blue-900 to-blue-600 shadow-xl backdrop-blur-md text-white flex flex-col">
-      {}
-      {}
-      {}
+      { }
+      { }
+      { }
       <ul className="space-y-3 overflow-y-auto flex-grow">
         <SidebarItem
           icon="📺"
@@ -22,11 +22,12 @@ export default function Sidebar() {
           badge={t("appealDashboardBadge")}
         />
         <SidebarItem
+          id="sidebar-new-grievance"
           icon="➕"
           text={<Link to="/newGrievanceOrganisation" className="no-underline text-inherit">{t("lodgeGrievance")}</Link>}
         />
         <SidebarItem icon="➕" text={t("lodgePensionGrievance")} />
-        <SidebarItem icon="➕" text={t("checkStatus")} />
+        <SidebarItem id="sidebar-status" icon="➕" text={t("checkStatus")} />
         <SidebarItem icon="🔄" text={t("accountActivity")} />
         <SidebarItem
           icon="✏️"
@@ -46,12 +47,12 @@ export default function Sidebar() {
     </div>
   );
 }
-function SidebarItem({ icon, text, badge, special, onClick }) {
+function SidebarItem({ id, icon, text, badge, special, onClick }) {
   return (
     <li
-      className={`flex justify-between items-center p-3 rounded-xl cursor-pointer transition-all duration-200 transform hover:scale-105 hover:shadow-md ${
-        special ? "bg-red-600 hover:bg-red-700 text-white" : "bg-white/20 hover:bg-white/30 text-white"
-      }`}
+      id={id}
+      className={`flex justify-between items-center p-3 rounded-xl cursor-pointer transition-all duration-200 transform hover:scale-105 hover:shadow-md ${special ? "bg-red-600 hover:bg-red-700 text-white" : "bg-white/20 hover:bg-white/30 text-white"
+        }`}
       onClick={onClick}
     >
       <div className="flex items-center space-x-3">

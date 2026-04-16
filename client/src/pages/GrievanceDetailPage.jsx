@@ -6,7 +6,7 @@ function GrievanceDetailPage() {
     const navigate = useNavigate();
     const [grievance, setGrievance] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [replyingTo, setReplyingTo] = useState(null); 
+    const [replyingTo, setReplyingTo] = useState(null);
     const [replyText, setReplyText] = useState("");
     const [replyFile, setReplyFile] = useState(null);
     const [sendingReply, setSendingReply] = useState(false);
@@ -123,7 +123,7 @@ function GrievanceDetailPage() {
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
             <div className="flex-grow container mx-auto px-4 py-8 max-w-5xl">
-                {}
+                { }
                 <button
                     onClick={() => navigate("/homepage")}
                     className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-semibold shadow-md hover:shadow-lg"
@@ -133,19 +133,19 @@ function GrievanceDetailPage() {
                     </svg>
                     Back to Dashboard
                 </button>
-                {}
+                { }
                 <div className="bg-white rounded-xl shadow-lg p-8">
                     <div className="border-b pb-4 mb-6">
                         <h1 className="text-3xl font-bold text-gray-800 mb-2">Grievance Details</h1>
                         <p className="text-gray-500">Tracking ID: <span className="font-semibold text-gray-700">{grievance.grievanceCode}</span></p>
                     </div>
-                    {}
+                    { }
                     <div className="mb-6">
                         <span className={`inline-block px-4 py-2 rounded-full font-semibold ${statusColors[grievance.currentStatus]}`}>
                             {grievance.currentStatus}
                         </span>
                     </div>
-                    {}
+                    { }
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                         <div>
                             <p className="text-sm text-gray-500 mb-1">Department</p>
@@ -162,14 +162,14 @@ function GrievanceDetailPage() {
                             </p>
                         </div>
                     </div>
-                    {}
+                    { }
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-gray-800 mb-3">Issue Description</h3>
                         <p className="text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg">
                             {grievance.description}
                         </p>
                     </div>
-                    {}
+                    { }
                     {grievance.adminQuestions && grievance.adminQuestions.length > 0 && (
                         <div className="mb-8">
                             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
@@ -188,7 +188,7 @@ function GrievanceDetailPage() {
                                             </p>
                                         </div>
                                         <p className="text-gray-800 mb-3">{q.question}</p>
-                                        {}
+                                        { }
                                         {q.reply && (
                                             <div className="mt-3 pt-3 border-t border-blue-200 bg-green-50 p-3 rounded">
                                                 <p className="text-sm text-green-700 font-semibold mb-2">
@@ -267,7 +267,7 @@ function GrievanceDetailPage() {
                             </p>
                         </div>
                     )}
-                    {}
+                    { }
                     {grievance.fileName && (
                         <div className="mb-8">
                             <h3 className="text-lg font-semibold text-gray-800 mb-3">Uploaded Document</h3>
@@ -281,7 +281,7 @@ function GrievanceDetailPage() {
                             </a>
                         </div>
                     )}
-                    {}
+                    { }
                     <div>
                         <h3 className="text-lg font-semibold text-gray-800 mb-4">Status Timeline</h3>
                         <div className="space-y-3">
@@ -292,9 +292,8 @@ function GrievanceDetailPage() {
                                 const isCurrent = index === currentIndex;
                                 return (
                                     <div key={stage} className="flex items-center">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                            isCompleted ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'
-                                        }`}>
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isCompleted ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'
+                                            }`}>
                                             {isCompleted ? '✓' : index + 1}
                                         </div>
                                         <div className="ml-4">

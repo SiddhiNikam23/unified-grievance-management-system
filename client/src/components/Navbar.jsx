@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
+import { useTour } from "../context/TourContext";
 import { getTranslation } from "../translations/translations";
 
 const Navbar = () => {
   const [active, setActive] = useState("Home");
   const navigate = useNavigate();
-  const { language } = useLanguage();
+  const { language, changeLanguage } = useLanguage();
+  const { startTour, hasCompletedTour, isTourActive } = useTour();
   const t = (key) => getTranslation(language, key);
 
   const navItems = [
@@ -59,10 +61,34 @@ const Navbar = () => {
         </ul>
       </nav>
 
-      {/* Login Button */}
+      {/* Login & Language */}
       <div className="flex items-center gap-4">
+        {/* Language Toggle */}
+        <div className="flex flex-col items-center">
+          <button
+            onClick={() => changeLanguage(language === "en" ? "hi" : "en")}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-all font-medium text-xs text-slate-600"
+          >
+            <span className={language === "en" ? "text-teal-600 font-bold" : ""}>EN</span>
+            <span className="text-slate-300">|</span>
+            <span className={language === "hi" ? "text-teal-600 font-bold" : ""}>HI</span>
+          </button>
+          
+          {(hasCompletedTour && !isTourActive) && (
+            <button 
+              onClick={() => {
+                localStorage.removeItem("nagrik_tour_completed");
+                window.location.reload();
+              }}
+              className="text-[10px] text-teal-600 hover:underline mt-1 font-medium"
+            >
+              Restart Tour
+            </button>
+          )}
+        </div>
+
         <button
-          id="login-btn"   // ✅ IMPORTANT FOR TOUR
+          id="login-btn"
           className="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
           onClick={() => navigate("/login")}
         >
