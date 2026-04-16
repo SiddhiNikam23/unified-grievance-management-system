@@ -26,7 +26,7 @@ timeout /t 5 /nobreak > nul
 
 call :START_SERVICE "Python Spam Detection" "8000"
 cd scripts
-start "Python Server" cmd /k "color 0E && echo Python Server Running... && python -m uvicorn spamdetection_server:app --reload --port 8000"
+start "Python Server" cmd /k "color 0E && echo Python Server Running... && python -m uvicorn api:app --reload --port 8000"
 cd ..
 timeout /t 3 /nobreak > nul
 

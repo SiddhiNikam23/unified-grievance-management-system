@@ -74,7 +74,7 @@ const Clients = () => {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-cyan-900 p-6 text-white shadow-lg">
+      <section data-guide="welcome" className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-cyan-900 p-6 text-white shadow-lg">
         <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-cyan-300/25 blur-2xl" />
         <div className="absolute -bottom-16 left-1/3 h-48 w-48 rounded-full bg-sky-400/20 blur-2xl" />
         <div className="relative flex flex-wrap items-start justify-between gap-4">

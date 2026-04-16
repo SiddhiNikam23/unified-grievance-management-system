@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, RefreshCcw, Send, Link as LinkIcon } from 'lucide-react';
 
 const initialForm = {
@@ -10,6 +10,89 @@ const initialForm = {
   sourceLanguage: 'en'
 };
 
+const DEPARTMENT_LABELS = {
+  emergency_response: 'Emergency Response Team',
+  financial_services: 'Financial Services (Banking Division)',
+  labour_employment: 'Labour and Employment',
+  income_tax: 'Central Board of Direct Taxes (Income Tax)',
+  posts: 'Posts',
+  telecommunications: 'Telecommunications',
+  personnel_training: 'Personnel and Training',
+  housing_urban: 'Housing and Urban Affairs',
+  health_welfare: 'Health & Family Welfare'
+};
+
+const DEPARTMENT_KEYWORDS = {
+  financial_services: ['bank', 'atm', 'loan', 'credit', 'debit', 'upi', 'payment', 'refund', 'account', 'card', 'fraud'],
+  labour_employment: ['labour', 'employment', 'salary', 'wage', 'job', 'pf', 'epf', 'gratuity', 'workplace', 'contract'],
+  income_tax: ['income tax', 'tax', 'itr', 'refund', 'pan', 'notice', 'assessment', 'tds'],
+  posts: ['post', 'postal', 'courier', 'parcel', 'speed post', 'delivery', 'mail', 'tracking'],
+  telecommunications: ['telecom', 'telecommunications', 'network', 'internet', 'mobile', 'signal', 'broadband', 'call', 'tower', 'sim', 'wifi', 'data'],
+  personnel_training: ['recruitment', 'transfer', 'promotion', 'training', 'service matter', 'cadre', 'posting', 'appointment'],
+  housing_urban: ['water', 'electric', 'electricity', 'power', 'road', 'traffic', 'sanitation', 'waste', 'garbage', 'sewer', 'drain', 'pothole', 'street', 'housing', 'urban', 'municipal'],
+  health_welfare: ['hospital', 'doctor', 'medicine', 'health', 'treatment', 'ambulance', 'clinic', 'welfare', 'patient']
+};
+
+function normalizeDepartment(value) {
+  return String(value || '').trim().toLowerCase().replace(/[\s\-/]+/g, '_');
+}
+
+function resolveDepartmentKey(value) {
+  const normalized = normalizeDepartment(value);
+  if (!normalized) return '';
+  if (DEPARTMENT_LABELS[normalized]) return normalized;
+
+  const aliases = {
+    telecommunication: 'telecommunications',
+    telecom: 'telecommunications',
+    housing: 'housing_urban',
+    urban: 'housing_urban',
+    electricity: 'housing_urban',
+    water: 'housing_urban',
+    road: 'housing_urban',
+    postal: 'posts',
+    post: 'posts',
+    bank: 'financial_services',
+    banking: 'financial_services',
+    labour: 'labour_employment',
+    employment: 'labour_employment',
+    income: 'income_tax',
+    tax: 'income_tax',
+    health: 'health_welfare',
+    welfare: 'health_welfare'
+  };
+
+  return aliases[normalized] || normalized;
+}
+
+function complaintMatchesDepartment(complaint, departmentKey) {
+  if (!departmentKey || departmentKey === 'emergency_response') return true;
+
+  const explicitDepartment = resolveDepartmentKey(
+    complaint.department || complaint.departmentLabel || complaint.assignedDepartment || complaint.department_name || ''
+  );
+  if (explicitDepartment && explicitDepartment === departmentKey) {
+    return true;
+  }
+
+  const text = [
+    complaint.sourceContent,
+    complaint.sourcePlatform,
+    complaint.sourceHandle,
+    complaint.sourceAuthorName,
+    complaint.department,
+    complaint.category,
+    complaint.issue_type
+  ]
+    .flat()
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  const keywords = DEPARTMENT_KEYWORDS[departmentKey] || [];
+  return keywords.some((keyword) => text.includes(keyword));
+}
+
 const SocialComplaints = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +101,18 @@ const SocialComplaints = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [form, setForm] = useState(initialForm);
+  const [adminDepartment, setAdminDepartment] = useState('');
+
+  useEffect(() => {
+    setAdminDepartment(localStorage.getItem('adminDepartment') || '');
+  }, []);
+
+  const effectiveDepartment = useMemo(
+    () => resolveDepartmentKey(adminDepartment || localStorage.getItem('adminDepartment') || ''),
+    [adminDepartment]
+  );
+
+  const departmentLabel = DEPARTMENT_LABELS[effectiveDepartment] || 'Your Department';
 
   const fetchItems = async () => {
     try {
@@ -41,6 +136,11 @@ const SocialComplaints = () => {
     const interval = setInterval(fetchItems, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const filteredItems = useMemo(
+    () => items.filter((item) => complaintMatchesDepartment(item, effectiveDepartment)),
+    [items, effectiveDepartment]
+  );
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -103,10 +203,10 @@ const SocialComplaints = () => {
   };
 
   const stats = {
-    total: items.length,
-    verified: items.filter((item) => item.isComplaint).length,
-    imported: items.filter((item) => item.status === 'Imported').length,
-    rejected: items.filter((item) => item.status === 'Rejected').length
+    total: filteredItems.length,
+    verified: filteredItems.filter((item) => item.isComplaint).length,
+    imported: filteredItems.filter((item) => item.status === 'Imported').length,
+    rejected: filteredItems.filter((item) => item.status === 'Rejected').length
   };
 
   return (
@@ -119,6 +219,7 @@ const SocialComplaints = () => {
         <p className="text-gray-600 mt-2">
           Detect complaints from social media posts, verify them, and route the approved ones into the grievance system.
         </p>
+        <p className="text-sm text-gray-500 mt-1">Showing complaints for: {departmentLabel}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -238,7 +339,7 @@ const SocialComplaints = () => {
 
         {loading ? (
           <div className="p-12 text-center text-gray-500">Loading social complaints...</div>
-        ) : items.length === 0 ? (
+        ) : filteredItems.length === 0 ? (
           <div className="p-12 text-center text-gray-500">No social complaints detected yet.</div>
         ) : (
           <div className="overflow-x-auto">
@@ -255,7 +356,7 @@ const SocialComplaints = () => {
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
+                {filteredItems.map((item) => (
                   <tr key={item._id} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-3">{item.sourcePlatform}</td>
                     <td className="px-4 py-3">{item.sourceHandle || 'Anonymous'}</td>

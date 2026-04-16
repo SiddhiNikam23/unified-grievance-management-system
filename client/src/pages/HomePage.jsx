@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FiMenu, FiX, FiGrid, FiBell, FiMessageCircle, FiMonitor, FiPlus, FiSearch, FiActivity, FiGlobe, FiLogOut } from "react-icons/fi";
+import { FiMenu, FiX, FiGrid, FiBell, FiMessageCircle, FiPlus, FiSearch, FiActivity, FiGlobe, FiLogOut } from "react-icons/fi";
 import Footer from "../components/Footer";
 import HomeHeader from "../components/HomeHeader";
 import Home from "../components/Home";
-import Complaints from "../components/Complaints";
 import Status from "../components/Status";
 import Contact from "../components/Contact";
 import NewGrievanceOrganisation from "../components/NewGrievanceOrganisation";
@@ -15,6 +14,7 @@ import FAQPage from "../components/FAQPage";
 import ChangePassword from "../components/ChangePassword";
 import AccountDetails from "../components/AccountDetails";
 import Chatbot from "../components/Chatbot";
+import TalkGuide from "../frontend/TalkGuide.jsx";
 import { useNavigate } from 'react-router';
 import { deleteCookie, getCookie } from "../utilities/cookie";
 import { ToastContainer, toast } from "react-toastify";
@@ -43,12 +43,11 @@ function Sidebar({ setActivePage, activePage }) {
       .catch(err => console.error("Logout error", err));
   }
   const items = [
-    { key: "home", text: t("appealDashboard"), icon: FiGrid },
+    { key: "home", text: t("appealDashboard"), icon: FiGrid, guide: "welcome" },
     { key: "contact", text: "Post-events", icon: FiBell },
-    { key: "chatbot", text: t("chatbot"), icon: FiMessageCircle },
-    { key: "Submit", text: "Appeal Dashboard", icon: FiMonitor },
-    { key: "newGrievanceOrganisation", text: t("lodgeGrievance"), icon: FiPlus },
-    { key: "status", text: t("checkStatus"), icon: FiSearch },
+    { key: "chatbot", text: t("chatbot"), icon: FiMessageCircle, guide: "chatbot" },
+    { key: "newGrievanceOrganisation", text: t("lodgeGrievance"), icon: FiPlus, guide: "register" },
+    { key: "status", text: t("checkStatus"), icon: FiSearch, guide: "status" },
     { key: "accountDetails", text: t("accountActivity"), icon: FiActivity },
   ];
 
@@ -64,6 +63,7 @@ function Sidebar({ setActivePage, activePage }) {
             key={`${item.key}-${item.text}`}
             icon={item.icon}
             text={item.text}
+            guide={item.guide}
             isActive={activePage === item.key}
             onClick={() => setActivePage(item.key)}
           />
@@ -97,9 +97,10 @@ function Sidebar({ setActivePage, activePage }) {
     </div>
   );
 }
-function SidebarItem({ icon: Icon, text, special, isActive, onClick }) {
+function SidebarItem({ icon: Icon, text, special, isActive, onClick, guide }) {
   return (
     <li
+      data-guide={guide || undefined}
       onClick={onClick}
       className={`group flex cursor-pointer items-center rounded-2xl px-4 py-3 text-base transition-all duration-200 ${
         special
@@ -171,9 +172,7 @@ function HomePage() {
     }
     switch (activePage) {
       case "home":
-        return <Home key={userEmail} />;
-      case "Submit":
-        return <Complaints />;
+        return <Home key={userEmail} showIntro />;
       case "status":
         return <Status />;
       case "contact":
@@ -204,7 +203,7 @@ function HomePage() {
     <div className="min-h-screen bg-[#ece9e4] p-1 sm:p-2 lg:p-3">
       <ToastContainer autoClose={3000} position="top-center" />
 
-      <div className="mx-auto min-h-[calc(100vh-8px)] w-[calc(100vw-8px)] max-w-none overflow-hidden rounded-[30px] border border-black/5 bg-[#f7f8fb] shadow-[0_24px_42px_rgba(15,23,42,0.16)] sm:min-h-[calc(100vh-16px)] sm:w-[calc(100vw-16px)] lg:min-h-[calc(100vh-24px)] lg:w-[calc(100vw-24px)]">
+      <div className="mx-auto min-h-[calc(100vh-8px)] w-[calc(100vw-8px)] max-w-none overflow-hidden rounded-[30px] border border-black/5 bg-[#f7f8fb] shadow-[0_24px_42px_rgba(15,23,42,0.16)] sm:min-h-[calc(100vh-16px)] sm:w-[calc(100vw-16px)] lg:h-[calc(100vh-24px)] lg:w-[calc(100vw-24px)]">
         <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 shadow-sm lg:hidden">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-teal-700">Citizen Portal</p>
@@ -216,8 +215,8 @@ function HomePage() {
         </div>
 
         {isAuthenticated && (
-          <div className="flex flex-1 flex-col lg:flex-row">
-            <aside className="hidden lg:block lg:min-h-[calc(100vh-48px)] lg:w-[280px] xl:w-[300px]">
+          <div className="flex flex-1 flex-col lg:h-full lg:overflow-hidden lg:flex-row">
+            <aside className="hidden lg:block lg:h-full lg:shrink-0 lg:w-[280px] xl:w-[300px]">
               <Sidebar setActivePage={setActivePage} activePage={activePage} />
             </aside>
             {isSidebarOpen && (
@@ -233,8 +232,8 @@ function HomePage() {
                 <div className="flex-grow" onClick={() => setIsSidebarOpen(false)}></div>
               </div>
             )}
-            <main className="flex-1 bg-[#f3f5fa] p-4 sm:p-6 lg:p-8">
-              <HomeHeader />
+            <main data-guide="features" className="flex-1 bg-[#f3f5fa] p-4 sm:p-6 lg:h-full lg:overflow-y-auto lg:p-8">
+              {activePage === "home" && <HomeHeader />}
               <div className="mt-6">{renderContent()}</div>
             </main>
           </div>
@@ -242,13 +241,14 @@ function HomePage() {
 
         {!isAuthenticated && (
           <div className="bg-[#f3f5fa] p-4">
-            <HomeHeader />
+            {activePage === "home" && <HomeHeader />}
             <div className="mt-6">{renderContent()}</div>
           </div>
         )}
       </div>
 
       <Footer />
+      {isAuthenticated && <TalkGuide activePage={activePage} setActivePage={setActivePage} />}
     </div>
   );
 }

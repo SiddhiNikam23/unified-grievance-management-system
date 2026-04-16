@@ -137,16 +137,35 @@ const ClientTable = ({ grievances: propGrievances }) => {
             setCurrentPage((prev) => prev - 1);
         }
     };
+
+    const getStatusBadge = (status) => {
+        const styles = {
+            "Under Review": "bg-amber-100 text-amber-800",
+            "Complaint Filed": "bg-indigo-100 text-indigo-800",
+            "Investigation": "bg-sky-100 text-sky-800",
+            "Resolved": "bg-emerald-100 text-emerald-800",
+            "Resolution Provided": "bg-emerald-100 text-emerald-800",
+            "Rejected": "bg-rose-100 text-rose-800"
+        };
+
+        return (
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${styles[status] || "bg-slate-100 text-slate-700"}`}>
+                {status}
+            </span>
+        );
+    };
+
     return (
-        <div className="container mx-auto px-4">
+        <div data-guide="register-complaint" className="mx-auto">
             <FilterTabs grievances={propGrievances || []} setFilteredGrievances={setFilteredGrievances} />
-            <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
-                <table className="min-w-full border-collapse rounded-lg">
-                    <thead className="bg-gray-800 text-white sticky top-0">
+            <div data-guide="track-status" className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse">
+                    <thead className="bg-gray-50">
                         <tr>
                             {["Grievance Code", "Complainant", "Description", "Date", "Priority", "Duplicate", "AI Resolved", "Status", "Download"]
                                 .map((header, index) => (
-                                    <th key={index} className="py-3 px-4 text-left font-medium">{header}</th>
+                                    <th key={index} className="whitespace-nowrap px-4 py-3 text-left text-sm font-semibold text-gray-700">{header}</th>
                                 ))}
                         </tr>
                     </thead>
@@ -172,18 +191,18 @@ const ClientTable = ({ grievances: propGrievances }) => {
                                 return (
                                     <tr
                                         key={index}
-                                        className={`border-b hover:bg-gray-100 transition duration-200 cursor-pointer ${
+                                        className={`cursor-pointer border-b border-gray-100 hover:bg-gray-50 ${
                                             client.isEscalated 
-                                                ? "bg-red-50 border-l-4 border-l-red-600 animate-pulse" 
-                                                : index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                                                ? "bg-red-50" 
+                                                : index % 2 === 0 ? "bg-white" : "bg-gray-50/40"
                                         }`}
                                         onClick={() => navigate(`/grievance/${client.grievanceCode}`)}
                                     >
-                                        <td className="py-3 px-4 font-semibold">
+                                        <td className="px-4 py-3 font-semibold text-gray-800">
                                             <div className="flex items-center gap-2">
                                                 {client.isEscalated && <span className="text-red-600">🚨</span>}
                                                 {client.duplicateGroup && (
-                                                    <span className="px-2 py-1 rounded text-xs font-bold bg-gray-800 text-white">
+                                                    <span className="rounded bg-slate-800 px-2 py-1 text-xs font-bold text-white">
                                                         {client.duplicateGroup}
                                                     </span>
                                                 )}
@@ -191,50 +210,54 @@ const ClientTable = ({ grievances: propGrievances }) => {
                                             </div>
                                             {client.isDuplicate && (
                                                 <div className="mt-1">
-                                                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                                                    <span className="rounded-full bg-fuchsia-100 px-2 py-1 text-xs text-fuchsia-700">
                                                         🔗 Linked to {client.linkedTo || 'parent'}
                                                     </span>
                                                 </div>
                                             )}
                                             {client.linkedComplaints && client.linkedComplaints.length > 0 && (
                                                 <div className="mt-1">
-                                                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                                    <span className="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-700">
                                                         📎 {client.linkedComplaints.length} linked
                                                     </span>
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="py-3 px-4">{client.complainantName}</td>
-                                        <td className="py-3 px-4">{client.description?.slice(0, 30) + "..."}</td>
-                                        <td className="py-3 px-4">{new Date(client.createdAt).toISOString().split("T")[0]}</td>
-                                        <td className="py-3 px-4">{getPriorityBadge(client.priority)}</td>
-                                        <td className="py-3 px-4 text-center">
+                                        <td className="px-4 py-3 text-gray-700">{client.complainantName}</td>
+                                        <td className="max-w-[260px] px-4 py-3 text-gray-600" title={client.description || ""}>
+                                            {client.description ? `${client.description.slice(0, 45)}${client.description.length > 45 ? "..." : ""}` : "No description"}
+                                        </td>
+                                        <td className="whitespace-nowrap px-4 py-3 text-gray-700">{new Date(client.createdAt).toISOString().split("T")[0]}</td>
+                                        <td className="px-4 py-3">{getPriorityBadge(client.priority)}</td>
+                                        <td className="px-4 py-3 text-center">
                                             {client.isDuplicate ? (
-                                                <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-600 text-white">
+                                                <span className="rounded-full bg-fuchsia-600 px-3 py-1 text-xs font-bold text-white">
                                                     DUPLICATE
                                                 </span>
                                             ) : client.linkedComplaints && client.linkedComplaints.length > 0 ? (
-                                                <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-600 text-white">
+                                                <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-bold text-white">
                                                     PARENT ({client.linkedComplaints.length})
                                                 </span>
                                             ) : (
-                                                <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-400 text-white">
+                                                <span className="rounded-full bg-slate-400 px-3 py-1 text-xs font-bold text-white">
                                                     UNIQUE
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="py-3 px-4 text-center">
+                                        <td className="px-4 py-3 text-center">
                                             <input
                                                 type="checkbox"
                                                 checked={client.aiResolved}
                                                 readOnly
-                                                className="w-5 h-5 cursor-default pointer-events-none"
+                                                className="h-5 w-5 cursor-default pointer-events-none"
                                             />
                                         </td>
-                                        <td className="py-3 px-4">{client.currentStatus}</td>
-                                        <td className="py-3 px-4">
+                                        <td className="px-4 py-3">
+                                            {getStatusBadge(client.currentStatus)}
+                                        </td>
+                                        <td className="px-4 py-3">
                                             <button
-                                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex items-center justify-center transition duration-200"
+                                                className="flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     generatePDF(client);
@@ -249,35 +272,36 @@ const ClientTable = ({ grievances: propGrievances }) => {
                             })
                         ) : (
                             <tr>
-                                <td colSpan="9" className="text-center py-4 text-gray-500">No grievances found</td>
+                                <td colSpan="9" className="py-8 text-center text-gray-500">No grievances found</td>
                             </tr>
                         )}
                     </tbody>
                 </table>
+                </div>
             </div>
-            {}
-            <div className="mt-5 flex justify-between items-center">
+
+            <div className="mt-5 flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
                 <button
                     onClick={prevPage}
                     disabled={currentPage === 1}
-                    className={`px-4 py-2 rounded-md font-semibold transition-colors ${
+                    className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
                         currentPage === 1
-                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                            : "bg-blue-500 hover:bg-blue-600 text-white"
+                            ? "cursor-not-allowed bg-gray-200 text-gray-400"
+                            : "bg-blue-600 text-white hover:bg-blue-700"
                     }`}
                 >
                     Prev
                 </button>
-                <p className="text-gray-700">
+                <p className="text-sm font-medium text-gray-700">
                     Page {currentPage} of {Math.max(1, Math.ceil(filteredGrievances.length / entriesPerPage))}
                 </p>
                 <button
                     onClick={nextPage}
                     disabled={currentPage === Math.ceil(filteredGrievances.length / entriesPerPage)}
-                    className={`px-4 py-2 rounded-md font-semibold transition-colors ${
+                    className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
                         currentPage === Math.ceil(filteredGrievances.length / entriesPerPage)
-                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                            : "bg-blue-500 hover:bg-blue-600 text-white"
+                            ? "cursor-not-allowed bg-gray-200 text-gray-400"
+                            : "bg-blue-600 text-white hover:bg-blue-700"
                     }`}
                 >
                     Next

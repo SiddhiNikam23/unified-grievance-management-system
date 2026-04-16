@@ -1,10 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Home, BarChart3, AlertTriangle, Radio } from "lucide-react"; 
+import { Home, BarChart3, AlertTriangle, Radio, Radar } from "lucide-react"; 
 const Sidebar = () => {
   const navigate = useNavigate();
   const menuItems = [
     { name: "My Clients", path: "/clients", icon: <Home size={20} /> },
     { name: "Emergency Response", path: "/emergency", icon: <AlertTriangle size={20} className="text-red-300" /> },
+    { name: "Future Prediction", path: "/future-prediction", icon: <Radar size={20} className="text-cyan-200" /> },
     { name: "Social Listener", path: "/social-complaints", icon: <Radio size={20} className="text-yellow-200" /> },
     { name: "Insights", path: "/quotes", icon: <BarChart3 size={20} /> },
   ];

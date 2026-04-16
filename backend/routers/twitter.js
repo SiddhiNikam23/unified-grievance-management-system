@@ -2,6 +2,7 @@ const express = require("express");
 const Grievance = require("../models/grievance");
 const { detectGrievancePriority } = require("../services/gemini");
 const { onComplaintRegistered } = require("../services/notificationEngine");
+const { calculateBacklogAwareEta } = require("../services/etaService");
 const router = express.Router();
 
 // Webhook endpoint for Twitter (for demo, we'll use a simple POST endpoint)
@@ -33,6 +34,14 @@ router.post("/webhook", async (req, res) => {
             description: tweet_text,
             location: location
         });
+        const etaData = await calculateBacklogAwareEta({
+            department: department || "General",
+            priority: priorityData.priority,
+            complaintText: tweet_text,
+            issueType: department,
+            subcategory,
+            category
+        });
 
         // Create grievance from tweet
         const grievance = new Grievance({
@@ -45,6 +54,21 @@ router.post("/webhook", async (req, res) => {
             location: location || null,
             priority: priorityData.priority,
             priorityReason: priorityData.priorityReason,
+            serviceDepartmentKey: etaData.department,
+            serviceDepartmentLabel: etaData.departmentLabel,
+            etaDepartmentKey: etaData.department,
+            etaDepartmentLabel: etaData.departmentLabel,
+            etaBaseDays: etaData.baseTimeDays,
+            etaCapacityPerDay: etaData.capacityPerDay,
+            etaBacklogCount: etaData.backlogCount,
+            etaBacklogDays: etaData.backlogDays,
+            etaHistoricalDays: etaData.historicalAverageDays,
+            etaPriorityFactor: etaData.priorityFactor,
+            etaAiFactor: etaData.aiFactor,
+            etaFinalDays: etaData.finalEtaDays,
+            etaStatus: etaData.status,
+            etaMessage: etaData.message,
+            etaCalculatedAt: etaData.calculatedAt,
             source: 'twitter',
             sourceMetadata: {
                 twitterTweetId: tweet_id,
@@ -67,7 +91,8 @@ router.post("/webhook", async (req, res) => {
             success: true,
             grievanceCode: newGrievance.grievanceCode,
             message: `Complaint registered! Your tracking number is ${newGrievance.grievanceCode}`,
-            grievance: newGrievance
+            grievance: newGrievance,
+            eta: etaData
         });
 
     } catch (err) {
@@ -106,6 +131,14 @@ router.post("/submit-tweet", async (req, res) => {
             description: tweet_text,
             location: null
         });
+        const etaData = await calculateBacklogAwareEta({
+            department: department || "General",
+            priority: priorityData.priority,
+            complaintText: tweet_text,
+            issueType: department,
+            subcategory,
+            category
+        });
 
         // Create grievance from tweet
         const grievance = new Grievance({
@@ -118,6 +151,21 @@ router.post("/submit-tweet", async (req, res) => {
             location: null,
             priority: priorityData.priority,
             priorityReason: priorityData.priorityReason,
+            serviceDepartmentKey: etaData.department,
+            serviceDepartmentLabel: etaData.departmentLabel,
+            etaDepartmentKey: etaData.department,
+            etaDepartmentLabel: etaData.departmentLabel,
+            etaBaseDays: etaData.baseTimeDays,
+            etaCapacityPerDay: etaData.capacityPerDay,
+            etaBacklogCount: etaData.backlogCount,
+            etaBacklogDays: etaData.backlogDays,
+            etaHistoricalDays: etaData.historicalAverageDays,
+            etaPriorityFactor: etaData.priorityFactor,
+            etaAiFactor: etaData.aiFactor,
+            etaFinalDays: etaData.finalEtaDays,
+            etaStatus: etaData.status,
+            etaMessage: etaData.message,
+            etaCalculatedAt: etaData.calculatedAt,
             source: 'twitter',
             sourceMetadata: {
                 twitterTweetId: `DEMO_${Date.now()}`,
@@ -138,7 +186,8 @@ router.post("/submit-tweet", async (req, res) => {
             success: true,
             grievanceCode: newGrievance.grievanceCode,
             message: `Complaint registered from Twitter! Tracking number: ${newGrievance.grievanceCode}`,
-            grievance: newGrievance
+            grievance: newGrievance,
+            eta: etaData
         });
 
     } catch (err) {

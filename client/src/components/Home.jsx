@@ -5,7 +5,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { getTranslation } from "../translations/translations";
 import { getCookie } from "../utilities/cookie";
 import { FiClock, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
-export default function Home() {
+export default function Home({ showIntro = false }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(language, key);
   const [grievances, setGrievances] = useState([]);
@@ -154,19 +154,21 @@ export default function Home() {
   }, [currentUser]);
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">Citizen Workspace</p>
-            <h1 className="mt-2 text-4xl font-bold leading-tight text-slate-900">Your grievance activity at a glance</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
-              Monitor filing progress, review complaint history, and continue pending actions from one clean dashboard.
-            </p>
+      {showIntro && (
+        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">Citizen Workspace</p>
+              <h1 className="mt-2 text-4xl font-bold leading-tight text-slate-900">Your grievance activity at a glance</h1>
+              <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
+                Monitor filing progress, review complaint history, and continue pending actions from one clean dashboard.
+              </p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 px-0 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 px-0 sm:grid-cols-3" data-guide="predictions">
         {cardData.map((card, index) => (
           <motion.div
             key={card.key}
@@ -187,7 +189,7 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm" data-guide="high-risk">
         <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50 p-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-slate-900">{t("listOfGrievances")}</h2>

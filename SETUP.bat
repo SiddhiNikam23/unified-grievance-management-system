@@ -163,7 +163,7 @@ start "Backend" cmd /k "cd backend && npm run dev"
 timeout /t 2 /nobreak >nul
 
 echo Starting Python Spam Detection...
-start "Python-Spam" cmd /k "cd scripts && python -m uvicorn spamdetection_server:app --reload --port 8000"
+start "Python-Spam" cmd /k "cd scripts && python -m uvicorn api:app --reload --port 8000"
 timeout /t 2 /nobreak >nul
 
 echo Starting Client App...

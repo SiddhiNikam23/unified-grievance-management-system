@@ -6,6 +6,7 @@ const { getChatbotGuidelines, analyzeGrievanceForResolution, detectGrievancePrio
 const { generateResolutionPDF } = require("../services/pdfGenerator");
 const { detectDuplicateComplaints } = require("../services/duplicateDetection");
 const { onComplaintRegistered, onStatusUpdated } = require("../services/notificationEngine");
+const { calculateBacklogAwareEta } = require("../services/etaService");
 const fs = require("fs");
 const { GridFSBucket } = require("mongodb");
 const mongoose = require("mongoose");
@@ -21,6 +22,14 @@ router.post("/", checkLogin, async (req, res) => {
             description: description,
             location: location
         });
+        const etaData = await calculateBacklogAwareEta({
+            department,
+            priority: priorityData.priority,
+            complaintText: description,
+            issueType: category,
+            subcategory,
+            category
+        });
         const grievance = new Grievance({
             complainantName: username,
             complainantEmail: email,
@@ -31,7 +40,22 @@ router.post("/", checkLogin, async (req, res) => {
             fileName: req.body.fileName,
             location: location || null,
             priority: priorityData.priority,
-            priorityReason: priorityData.priorityReason
+            priorityReason: priorityData.priorityReason,
+            serviceDepartmentKey: etaData.department,
+            serviceDepartmentLabel: etaData.departmentLabel,
+            etaDepartmentKey: etaData.department,
+            etaDepartmentLabel: etaData.departmentLabel,
+            etaBaseDays: etaData.baseTimeDays,
+            etaCapacityPerDay: etaData.capacityPerDay,
+            etaBacklogCount: etaData.backlogCount,
+            etaBacklogDays: etaData.backlogDays,
+            etaHistoricalDays: etaData.historicalAverageDays,
+            etaPriorityFactor: etaData.priorityFactor,
+            etaAiFactor: etaData.aiFactor,
+            etaFinalDays: etaData.finalEtaDays,
+            etaStatus: etaData.status,
+            etaMessage: etaData.message,
+            etaCalculatedAt: etaData.calculatedAt
         });
         console.log('Grievance with priority:', grievance);
         const newGrievance = await grievance.save();
@@ -42,7 +66,10 @@ router.post("/", checkLogin, async (req, res) => {
             console.error("Notification error (register):", notifyError.message);
         }
 
-        res.status(201).json(newGrievance);
+        res.status(201).json({
+            ...newGrievance.toObject(),
+            eta: etaData
+        });
     } catch (err) {
         console.error('Error creating grievance:', err);
         res.status(400).json({ error: err.message });
@@ -62,6 +89,40 @@ router.get("/grievanceCode/:grievanceCode", async (req, res) => {
     try {
         const grievance = await Grievance.findOne({ grievanceCode: req.params.grievanceCode });
         if (!grievance) return res.status(404).json({ message: "Grievancevv not found" });
+
+        const missingEta = grievance.etaFinalDays === undefined || grievance.etaFinalDays === null;
+        if (missingEta) {
+            try {
+                const etaData = await calculateBacklogAwareEta({
+                    department: grievance.department,
+                    priority: grievance.priority,
+                    complaintText: grievance.description,
+                    issueType: grievance.issueType || grievance.category,
+                    subcategory: grievance.subcategory,
+                    category: grievance.category
+                });
+
+                grievance.serviceDepartmentKey = etaData.department;
+                grievance.serviceDepartmentLabel = etaData.departmentLabel;
+                grievance.etaDepartmentKey = etaData.department;
+                grievance.etaDepartmentLabel = etaData.departmentLabel;
+                grievance.etaBaseDays = etaData.baseTimeDays;
+                grievance.etaCapacityPerDay = etaData.capacityPerDay;
+                grievance.etaBacklogCount = etaData.backlogCount;
+                grievance.etaBacklogDays = etaData.backlogDays;
+                grievance.etaHistoricalDays = etaData.historicalAverageDays;
+                grievance.etaPriorityFactor = etaData.priorityFactor;
+                grievance.etaAiFactor = etaData.aiFactor;
+                grievance.etaFinalDays = etaData.finalEtaDays;
+                grievance.etaStatus = etaData.status;
+                grievance.etaMessage = etaData.message;
+                grievance.etaCalculatedAt = etaData.calculatedAt;
+                await grievance.save();
+            } catch (etaError) {
+                console.error("ETA fallback calculation failed:", etaError.message);
+            }
+        }
+
         res.json(grievance);
     } catch (err) {
         res.status(500).json({ error: err.message });
