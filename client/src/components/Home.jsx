@@ -5,6 +5,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { getTranslation } from "../translations/translations";
 import { getCookie } from "../utilities/cookie";
 import { FiClock, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
+import { useAuth } from "../context/AuthContext";
 export default function Home({ showIntro = false }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(language, key);
@@ -73,11 +74,19 @@ export default function Home({ showIntro = false }) {
     }
     return <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">Web</span>;
   };
+  const { user, isAuthenticated } = useAuth();
+
   useEffect(() => {
-    const fetchUserAndGrievances = async () => {
+    const fetchGrievances = async () => {
+      if (!isAuthenticated || !user) {
+        setGrievances([]);
+        setCurrentUser(null);
+        return;
+      }
+
       try {
-        // First, get the current user to track who is logged in
-        const userResponse = await fetch("http://localhost:5000/user/username", {
+        setCurrentUser(user.email);
+        const response = await fetch("http://localhost:5000/grievance/", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -85,73 +94,28 @@ export default function Home({ showIntro = false }) {
           credentials: "include",
         });
 
-        if (userResponse.status === 200) {
-          const userData = await userResponse.json();
-          console.log("Current user:", userData.email);
-
-          // Only fetch grievances if user changed or first load
-          if (!currentUser || currentUser !== userData.email) {
-            setCurrentUser(userData.email);
-
-            const response = await fetch("http://localhost:5000/grievance/", {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              credentials: "include",
-            });
-
-            if (response.status === 200) {
-              const data = await response.json();
-
-              // Sort: Move resolved/resolution provided to bottom
-              const sortedData = data.sort((a, b) => {
-                const aResolved = a.currentStatus === 'Resolved' || a.currentStatus === 'Resolution Provided';
-                const bResolved = b.currentStatus === 'Resolved' || b.currentStatus === 'Resolution Provided';
-
-                if (aResolved && !bResolved) return 1;
-                if (!aResolved && bResolved) return -1;
-                return 0;
-              });
-
-              console.log("Fetched grievances for user:", userData.email, sortedData);
-              setGrievances(sortedData);
-              setCurrentPage(1);
-            } else if (response.status === 401) {
-              console.log("Unauthorized - clearing grievances");
-              setGrievances([]);
-              setCurrentUser(null);
-            }
-          }
+        if (response.status === 200) {
+          const data = await response.json();
+          const sortedData = data.sort((a, b) => {
+            const aResolved = a.currentStatus === 'Resolved' || a.currentStatus === 'Resolution Provided';
+            const bResolved = b.currentStatus === 'Resolved' || b.currentStatus === 'Resolution Provided';
+            if (aResolved && !bResolved) return 1;
+            if (!aResolved && bResolved) return -1;
+            return 0;
+          });
+          setGrievances(sortedData);
+          setCurrentPage(1);
         } else {
-          console.log("No user logged in");
           setGrievances([]);
-          setCurrentUser(null);
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching grievances:", error);
         setGrievances([]);
-        setCurrentUser(null);
       }
     };
 
-    fetchUserAndGrievances();
-
-    // Set up an interval to check for user changes (in case of logout/login without navigation)
-    const interval = setInterval(() => {
-      const token = getCookie("token");
-      if (!token && currentUser) {
-        // User logged out
-        setGrievances([]);
-        setCurrentUser(null);
-      } else if (token) {
-        // Check if user changed
-        fetchUserAndGrievances();
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [currentUser]);
+    fetchGrievances();
+  }, [user, isAuthenticated]);
   return (
     <div className="space-y-6">
       {showIntro && (

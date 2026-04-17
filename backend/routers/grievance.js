@@ -2,7 +2,7 @@ const express = require("express");
 const Grievance = require("../models/grievance");
 const { checkLogin } = require("../middlewares/auth");
 const axios = require("axios");
-const { getChatbotGuidelines, analyzeGrievanceForResolution, detectGrievancePriority, extractGrievanceFromChat } = require("../services/gemini");
+const { getChatbotGuidelines, analyzeGrievanceForResolution, detectGrievancePriority, extractGrievanceFromChat, analyzeGrievanceEvidence } = require("../services/gemini");
 const { generateResolutionPDF } = require("../services/pdfGenerator");
 const { detectDuplicateComplaints } = require("../services/duplicateDetection");
 const { onComplaintRegistered, onStatusUpdated } = require("../services/notificationEngine");
@@ -16,6 +16,35 @@ router.post("/", checkLogin, async (req, res) => {
     const email = req.user.user.email;
     const { department, description, location, category, subcategory } = req.body;
     try {
+        if (req.body.fileName) {
+            try {
+                const bucket = new GridFSBucket(mongoose.connection.db, { bucketName: "uploads" });
+                const file = await mongoose.connection.db.collection("uploads.files").findOne({ filename: req.body.fileName });
+                if (file) {
+                    const ext = req.body.fileName.split('.').pop().toLowerCase();
+                    const contentTypes = { 'pdf': 'application/pdf', 'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'webp': 'image/webp' };
+                    const mimeType = contentTypes[ext];
+
+                    if (mimeType) {
+                        const downloadStream = bucket.openDownloadStream(file._id);
+                        const chunks = [];
+                        for await (const chunk of downloadStream) {
+                            chunks.push(chunk);
+                        }
+                        const fileBuffer = Buffer.concat(chunks);
+                        
+                        const spamResult = await analyzeGrievanceEvidence(description, category, fileBuffer, mimeType);
+                        
+                        if (spamResult.isSpam) {
+                            return res.status(400).json({ error: "Your uploaded image was flagged as invalid: " + spamResult.reasoning });
+                        }
+                    }
+                }
+            } catch (spamCheckError) {
+                console.error("Spam check failed", spamCheckError);
+            }
+        }
+
         const priorityData = await detectGrievancePriority({
             category: category || 'General',
             subcategory: subcategory || 'Other',

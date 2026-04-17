@@ -119,7 +119,18 @@ export const TourProvider = ({ children }) => {
     setIsTourActive(false);
     setCurrentStep(-1);
     setIsSpeaking(false);
-    localStorage.setItem("nagrik_tour_completed", "true");
+    if (tourPhase === "dashboard") {
+      localStorage.setItem("nagrik_dash_tour_completed", "true");
+    } else {
+      localStorage.setItem("nagrik_tour_completed", "true");
+    }
+  };
+
+  // ✅ Trigger Dashboard Tour Manually
+  const startDashboardTour = () => {
+    setIsTourActive(true);
+    setCurrentStep(4); // Dashboard step index
+    setTourPhase("dashboard");
   };
 
   const nextStep = () => {
@@ -148,13 +159,13 @@ export const TourProvider = ({ children }) => {
         nextStep,
         setCurrentStep,
 
-        // ✅ NEW
         language,
         setLanguage,
         tourPhase,
         isPausedForAuth,
         pauseForAuth,
         resumeAfterLogin,
+        startDashboardTour,
 
         TOUR_STEPS
       }}

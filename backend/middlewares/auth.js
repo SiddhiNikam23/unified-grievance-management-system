@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const secretkey = "sarthak";
+require('dotenv').config();
+const secretkey = process.env.JWT_SECRET;
 function checkLogin(req, res, next) {
     try {
         if (!req.cookies.token) {

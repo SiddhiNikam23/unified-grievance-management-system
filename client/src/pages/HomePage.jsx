@@ -46,7 +46,6 @@ function Sidebar({ setActivePage, activePage }) {
     { key: "home", id: "sidebar-home", text: t("appealDashboard"), icon: FiGrid },
     { key: "contact", id: "sidebar-contact", text: "Post-events", icon: FiBell },
     { key: "chatbot", id: "sidebar-chatbot", text: t("chatbot"), icon: FiMessageCircle },
-    { key: "Submit", id: "sidebar-Submit", text: "Appeal Dashboard", icon: FiGrid },
     { key: "newGrievanceOrganisation", id: "sidebar-newGrievanceOrganisation", text: t("lodgeGrievance"), icon: FiPlus },
     { key: "status", id: "sidebar-status", text: t("checkStatus"), icon: FiSearch },
     { key: "accountDetails", id: "sidebar-accountDetails", text: t("accountActivity"), icon: FiActivity },
@@ -213,6 +212,17 @@ function HomePage() {
         return <Home key={user?.email} />;
     }
   };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#ece9e4] flex items-center justify-center">
+        <div className="text-center p-10">
+          <div className="w-16 h-16 border-4 border-cyan-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-slate-800">Verifying Session...</h2>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#ece9e4] p-1 sm:p-2 lg:p-3">
       <ToastContainer autoClose={3000} position="top-center" />
@@ -228,37 +238,32 @@ function HomePage() {
           </button>
         </div>
 
-        {isAuthenticated && (
-          <div className={`flex flex-1 flex-col lg:flex-row h-full ${isTourActive ? "overflow-visible" : "overflow-hidden"}`}>
+        <div className="flex flex-1 flex-col lg:flex-row h-full overflow-hidden">
+          {isAuthenticated && (
             <aside className={`hidden lg:block lg:min-h-[calc(100vh-48px)] lg:w-[280px] xl:w-[300px] ${isTourActive ? "overflow-visible z-[2002]" : "overflow-hidden"}`}>
               <Sidebar setActivePage={setActivePage} activePage={activePage} />
             </aside>
-            {isSidebarOpen && (
-              <div className="fixed inset-0 z-50 flex bg-black/50">
-                <div className={`flex h-full w-80 flex-col shadow-md ${isTourActive ? "overflow-visible" : "overflow-hidden"}`}>
-                  <div className="bg-[#0f5167] p-2">
-                    <button onClick={() => setIsSidebarOpen(false)} className="self-end p-3 text-xl text-white">
-                      <FiX />
-                    </button>
-                  </div>
-                  <Sidebar setActivePage={setActivePage} activePage={activePage} />
-                </div>
-                <div className="flex-grow" onClick={() => setIsSidebarOpen(false)}></div>
-              </div>
-            )}
-            <main id="dashboard-welcome" className="flex-1 bg-[#f3f5fa] p-4 sm:p-6 lg:p-8 overflow-y-auto">
-              <HomeHeader />
-              <div className="mt-6">{renderContent()}</div>
-            </main>
-          </div>
-        )}
+          )}
 
-        {!isAuthenticated && (
-          <div className="bg-[#f3f5fa] p-4">
+          {isAuthenticated && isSidebarOpen && (
+            <div className="fixed inset-0 z-50 flex bg-black/50 lg:hidden">
+              <div className={`flex h-full w-80 flex-col shadow-md ${isTourActive ? "overflow-visible" : "overflow-hidden"}`}>
+                <div className="bg-[#0f5167] p-2">
+                  <button onClick={() => setIsSidebarOpen(false)} className="self-end p-3 text-xl text-white">
+                    <FiX />
+                  </button>
+                </div>
+                <Sidebar setActivePage={setActivePage} activePage={activePage} />
+              </div>
+              <div className="flex-grow" onClick={() => setIsSidebarOpen(false)}></div>
+            </div>
+          )}
+
+          <main id="dashboard-welcome" className="flex-1 bg-[#f3f5fa] p-4 sm:p-6 lg:p-8 overflow-y-auto">
             {activePage === "home" && <HomeHeader />}
             <div className="mt-6">{renderContent()}</div>
-          </div>
-        )}
+          </main>
+        </div>
       </div>
 
       <Footer />

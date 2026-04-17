@@ -12,7 +12,7 @@ const Header = () => {
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Citizen Portal</p>
         <div className="text-2xl font-semibold">
-          <Link to="/" className="hover:text-cyan-200">{t("nagrikConnectAI")}</Link>
+          <Link to="/homepage" className="hover:text-cyan-200">{t("nagrikConnectAI")}</Link>
         </div>
       </div>
 

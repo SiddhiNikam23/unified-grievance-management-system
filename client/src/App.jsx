@@ -22,7 +22,9 @@ import TourController from './components/TourController';
 
 function App() {
   const location = useLocation();
-  const showNavbar = ["/", "/complaints", "/faqs", "/contact","/how-it-works"].includes(location.pathname);
+  const showNavbar = ["/", "/complaints", "/faqs", "/contact", "/how-it-works"].includes(location.pathname);
+  const isDashboard = location.pathname.startsWith("/homepage");
+
   return (
     <div>
       <TourOverlay />
