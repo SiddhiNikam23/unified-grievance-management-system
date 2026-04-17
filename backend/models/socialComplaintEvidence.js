@@ -46,6 +46,30 @@ const SocialComplaintEvidenceSchema = new mongoose.Schema(
     firstCapturedAt: { type: Date, default: Date.now, index: true },
     lastObservedAt: { type: Date, default: Date.now },
     lastVerifiedAt: Date,
+    
+    // ✅ NEW: AI Classification Fields
+    aiClassification: {
+      type: String,
+      enum: ["HELP_REQUEST", "INFORMATIONAL", "RESOLVED", "SPAM", "UNCLASSIFIED"],
+      default: "UNCLASSIFIED",
+      index: true
+    },
+    aiConfidence: { type: Number, default: 0, min: 0, max: 1 },
+    aiScores: {
+      help: { type: Number, default: 0 },
+      resolved: { type: Number, default: 0 },
+      spam: { type: Number, default: 0 },
+      info: { type: Number, default: 0 }
+    },
+    aiSentiment: {
+      type: String,
+      enum: ["positive", "negative", "neutral"],
+      default: "neutral"
+    },
+    isValidComplaint: { type: Boolean, default: false, index: true },
+    aiClassificationReason: { type: String, default: "" },
+    classifiedAt: Date,
+    
     availabilityStatus: {
       type: String,
       enum: ["live", "deleted", "unknown"],

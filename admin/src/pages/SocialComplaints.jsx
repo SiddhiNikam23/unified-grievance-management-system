@@ -17,7 +17,7 @@ const DEPARTMENT_LABELS = {
 
 const DEPARTMENT_KEYWORDS = {
   financial_services: ["bank", "atm", "loan", "credit", "debit", "upi", "payment", "refund", "account", "card", "fraud"],
-  labour_employment: ["labour", "employment", "salary", "wage", "job", "pf", "epf", "gratuity", "workplace", "contract"],
+  labour_employment: ["labour", "labor", "employment", "salary", "wage", "job", "pf", "epf", "gratuity", "workplace", "contract"],
   income_tax: ["income tax", "tax", "itr", "refund", "pan", "notice", "assessment", "tds"],
   posts: ["post", "postal", "courier", "parcel", "speed post", "delivery", "mail", "tracking"],
   telecommunications: ["telecom", "telecommunications", "network", "internet", "mobile", "signal", "broadband", "call", "tower", "sim", "wifi", "data"],
@@ -36,6 +36,8 @@ function resolveDepartmentKey(value) {
   if (DEPARTMENT_LABELS[normalized]) return normalized;
 
   const aliases = {
+    labour_and_employment: "labour_employment",
+    labor_and_employment: "labour_employment",
     telecommunication: "telecommunications",
     telecom: "telecommunications",
     housing: "housing_urban",
@@ -48,6 +50,7 @@ function resolveDepartmentKey(value) {
     bank: "financial_services",
     banking: "financial_services",
     labour: "labour_employment",
+    labor: "labour_employment",
     employment: "labour_employment",
     income: "income_tax",
     tax: "income_tax",
@@ -59,15 +62,20 @@ function resolveDepartmentKey(value) {
 }
 
 function complaintMatchesDepartment(complaint, departmentKey) {
+  // Emergency response department sees everything
   if (!departmentKey || departmentKey === "emergency_response") return true;
 
+  // Check for explicit department assignment FIRST (priority)
   const explicitDepartment = resolveDepartmentKey(
     complaint.department || complaint.departmentLabel || complaint.assignedDepartment || complaint.department_name || ""
   );
-  if (explicitDepartment && explicitDepartment === departmentKey) {
-    return true;
+  
+  // If complaint has explicit department, it MUST match the requested department
+  if (explicitDepartment && explicitDepartment !== "emergency_response") {
+    return explicitDepartment === departmentKey;
   }
 
+  // For complaints without explicit department, check keywords
   const text = [
     complaint.issue_type,
     complaint.issueType,
@@ -82,8 +90,23 @@ function complaintMatchesDepartment(complaint, departmentKey) {
     .join(" ")
     .toLowerCase();
 
+  // STRICT: Only return true if keywords match THIS department
   const keywords = DEPARTMENT_KEYWORDS[departmentKey] || [];
-  return keywords.some((keyword) => text.includes(keyword));
+  
+  // Don't show complaints if they match OTHER departments' keywords
+  const allOtherDepts = Object.keys(DEPARTMENT_KEYWORDS).filter(dept => dept !== departmentKey && dept !== "emergency_response");
+  const hasOtherDeptKeywords = allOtherDepts.some(otherDept => {
+    const otherKeywords = DEPARTMENT_KEYWORDS[otherDept] || [];
+    return otherKeywords.some(keyword => text.includes(keyword));
+  });
+
+  // If complaint matches another department's keywords, don't show it
+  if (hasOtherDeptKeywords) {
+    return false;
+  }
+
+  // Only show if matches THIS department's keywords
+  return keywords.length > 0 && keywords.some((keyword) => text.includes(keyword));
 }
 
 const DEPARTMENTS = [
@@ -101,6 +124,25 @@ function priorityClass(priority) {
     return "bg-yellow-100 text-yellow-800";
   }
   return "bg-green-100 text-green-800";
+}
+
+function isAllowedSocialComplaint(complaint) {
+  const aiLabel = String(complaint.aiClassification || "").toUpperCase();
+  const aiConfidence = Number(complaint.aiConfidence || 0);
+  const moderation = String(complaint.moderation_status || "").toLowerCase();
+
+  if (moderation === "rejected") return false;
+  if (complaint.isValidComplaint === true) return true;
+  return aiLabel === "HELP_REQUEST" && aiConfidence >= 0.6;
+}
+
+function isBlockedSocialComplaint(complaint) {
+  const aiLabel = String(complaint.aiClassification || "").toUpperCase();
+  const moderation = String(complaint.moderation_status || "").toLowerCase();
+
+  if (moderation === "rejected") return true;
+  if (complaint.isValidComplaint === false) return true;
+  return ["SPAM", "UNCLASSIFIED", "INFORMATIONAL", "RESOLVED"].includes(aiLabel);
 }
 
 export default function SocialComplaints() {
@@ -219,9 +261,20 @@ export default function SocialComplaints() {
     };
   }, []);
 
-  const filteredComplaints = useMemo(
-    () => complaints.filter((complaint) => complaintMatchesDepartment(complaint, effectiveDepartment)),
+  const departmentComplaints = useMemo(
+    () => complaints
+      .filter((complaint) => complaintMatchesDepartment(complaint, effectiveDepartment)),
     [complaints, effectiveDepartment]
+  );
+
+  const filteredComplaints = useMemo(
+    () => departmentComplaints.filter((complaint) => isAllowedSocialComplaint(complaint)),
+    [departmentComplaints]
+  );
+
+  const blockedComplaints = useMemo(
+    () => departmentComplaints.filter((complaint) => isBlockedSocialComplaint(complaint)),
+    [departmentComplaints]
   );
 
   const filteredAlerts = useMemo(
@@ -279,8 +332,55 @@ export default function SocialComplaints() {
             <p className="text-xs uppercase tracking-wide text-amber-600">Live Alerts</p>
             <p className="mt-1 text-2xl font-bold text-amber-700">{filteredAlerts.length}</p>
           </div>
+          <div className="rounded-xl border border-slate-300 bg-slate-50 p-3 md:col-span-3">
+            <p className="text-xs uppercase tracking-wide text-slate-600">Blocked Complaints (Spam/Invalid)</p>
+            <p className="mt-1 text-2xl font-bold text-slate-800">{blockedComplaints.length}</p>
+          </div>
         </div>
         <p className="mt-3 text-xs text-slate-500">Showing complaints for: {departmentLabel}</p>
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 bg-slate-900 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-white">
+          Blocked Complaints (Spam/Invalid)
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full border-collapse">
+            <thead className="bg-slate-100 text-slate-800">
+              <tr>
+                {["Complaint ID", "Platform", "User", "AI Tag", "Confidence", "Reason"].map((head) => (
+                  <th key={head} className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
+                    {head}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-slate-500">Loading...</td>
+                </tr>
+              ) : blockedComplaints.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-slate-500">No blocked complaints for {departmentLabel.toLowerCase()}.</td>
+                </tr>
+              ) : (
+                blockedComplaints.map((item) => (
+                  <tr key={`blocked-${item.grievanceCode}`} className="border-b border-slate-100 align-top">
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-800">{item.grievanceCode}</td>
+                    <td className="px-4 py-3 text-sm capitalize text-slate-700">{item.platform}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{item.user}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{item.aiClassification || "UNCLASSIFIED"}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{((item.aiConfidence || 0) * 100).toFixed(0)}%</td>
+                    <td className="max-w-[320px] px-4 py-3 text-xs text-slate-600" title={item.aiClassificationReason || "Blocked by AI/moderation filters"}>
+                      {item.aiClassificationReason || "Blocked by AI/moderation filters"}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {filteredAlerts.length > 0 && (
@@ -311,6 +411,7 @@ export default function SocialComplaints() {
                   "Issue",
                   "Location",
                   "Validity",
+                  "AI Verification",
                   "Priority",
                   "Status",
                   "Action"
@@ -324,11 +425,11 @@ export default function SocialComplaints() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-slate-500">Loading...</td>
+                  <td colSpan={10} className="px-4 py-6 text-center text-slate-500">Loading...</td>
                 </tr>
               ) : filteredComplaints.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-slate-500">No social complaints found for {departmentLabel.toLowerCase()}.</td>
+                  <td colSpan={10} className="px-4 py-6 text-center text-slate-500">No social complaints found for {departmentLabel.toLowerCase()}.</td>
                 </tr>
               ) : (
                 filteredComplaints.map((item) => (
@@ -339,6 +440,27 @@ export default function SocialComplaints() {
                     <td className="max-w-[260px] px-4 py-3 text-sm text-slate-700" title={item.content}>{item.issue_type}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.location || "Unknown"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.validity_score}</td>
+                    {/* ✅ NEW: AI Verification Column */}
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex flex-col gap-1">
+                        <span className={`rounded-full px-2 py-1 text-xs font-bold inline-block whitespace-nowrap ${
+                          item.aiClassification === "HELP_REQUEST"
+                            ? "bg-green-100 text-green-800"
+                            : item.aiClassification === "SPAM"
+                            ? "bg-red-100 text-red-800"
+                            : item.aiClassification === "RESOLVED"
+                            ? "bg-blue-100 text-blue-800"
+                            : item.aiClassification === "INFORMATIONAL"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}>
+                          {item.aiClassification || "UNCLASSIFIED"}
+                        </span>
+                        <small className="text-gray-600">
+                          Confidence: {((item.aiConfidence || 0) * 100).toFixed(0)}%
+                        </small>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-sm">
                       <span className={`rounded-full px-2 py-1 text-xs font-bold ${priorityClass(item.priority)}`}>
                         {item.priority}

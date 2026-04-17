@@ -20,9 +20,13 @@ const Clients = () => {
         });
         if (response.ok) {
           const data = await response.json();
+          const portalOnly = (Array.isArray(data) ? data : []).filter((g) => {
+            const source = String(g?.source || "").toLowerCase();
+            return !["reddit", "twitter", "instagram"].includes(source);
+          });
           
           // Sort: Move resolved/resolution provided to bottom
-          const sortedData = data.sort((a, b) => {
+          const sortedData = portalOnly.sort((a, b) => {
             const aResolved = a.currentStatus === 'Resolved' || a.currentStatus === 'Resolution Provided';
             const bResolved = b.currentStatus === 'Resolved' || b.currentStatus === 'Resolution Provided';
             
@@ -92,28 +96,38 @@ const Clients = () => {
         </div>
       </section>
 
-      <div className={`rounded-2xl border p-4 shadow-sm ${
-        adminDepartment === 'emergency_response' 
-          ? 'border-red-200 bg-red-50' 
-          : 'border-cyan-200 bg-cyan-50'
-      }`}>
-        <h2 className={`text-lg font-semibold ${
-          adminDepartment === 'emergency_response' 
-            ? 'text-red-900' 
-            : 'text-cyan-900'
-        }`}>
-          Department Access: {getDepartmentFullName(adminDepartment)}
-        </h2>
-        <p className={`mt-1 text-sm ${
-          adminDepartment === 'emergency_response' 
-            ? 'text-red-700' 
-            : 'text-cyan-700'
-        }`}>
-          {adminDepartment === 'emergency_response' 
-            ? `Full system access - Showing all ${filteredGrievances.length} complaints across all departments`
-            : `Showing ${filteredGrievances.length} grievances for your department`
-          }
-        </p>
+      <div className="grid grid-cols-1 gap-6">
+        <div className="lg:col-span-1">
+          <div className={`rounded-2xl border p-4 shadow-sm h-full ${
+            adminDepartment === 'emergency_response' 
+              ? 'border-red-200 bg-red-50' 
+              : 'border-cyan-200 bg-cyan-50'
+          }`}>
+            <h2 className={`text-lg font-semibold ${
+              adminDepartment === 'emergency_response' 
+                ? 'text-red-900' 
+                : 'text-cyan-900'
+            }`}>
+              Department Access: {getDepartmentFullName(adminDepartment)}
+            </h2>
+            <p className={`mt-1 text-sm ${
+              adminDepartment === 'emergency_response' 
+                ? 'text-red-700' 
+                : 'text-cyan-700'
+            }`}>
+              {adminDepartment === 'emergency_response' 
+                ? `Full system access - Showing all ${filteredGrievances.length} complaints across all departments`
+                : `Showing ${filteredGrievances.length} grievances for your department`
+              }
+            </p>
+            
+            <div className="mt-4 p-3 bg-white/50 rounded-lg border border-white/60">
+              <p className="text-xs font-medium text-slate-700">
+                📊 <span className="font-semibold">Live Status:</span> {filteredGrievances.length} total complaints | {filteredGrievances.filter(g => g.currentStatus !== 'Resolved' && g.currentStatus !== 'Resolution Provided').length} pending
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {escalatedCount > 0 && (

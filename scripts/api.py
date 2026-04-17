@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from predictor import predict_future, predictor_health
+from complaint_classifier import classify_text, is_valid_complaint
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -41,6 +42,11 @@ class SpamRequest(BaseModel):
     description: str
 
 
+class ComplaintClassificationRequest(BaseModel):
+    text: str
+    min_confidence: float = 0.6
+
+
 @app.get("/")
 def home():
     return {
@@ -50,6 +56,7 @@ def home():
         "endpoints": {
             "spam": "POST /predict",
             "future_complaints": "GET /predict?date=YYYY-MM-DD",
+            "classify_complaint": "POST /classify-complaint",
         },
     }
 
@@ -89,3 +96,49 @@ def predict_future_complaints(date: str = Query(..., description="Target date in
 @app.get("/predict-future")
 def predict_future_complaints_alias(date: str = Query(..., description="Target date in YYYY-MM-DD format")):
     return predict_future_complaints(date)
+
+
+@app.post("/classify-complaint")
+def classify_complaint(request: ComplaintClassificationRequest):
+    """
+    AI-powered complaint classification endpoint
+    
+    Returns:
+    {
+        "type": "HELP_REQUEST" | "INFORMATIONAL" | "RESOLVED" | "SPAM",
+        "confidence": float (0.0-1.0),
+        "is_valid": boolean,
+        "scores": {"help": float, "resolved": float, "spam": float, "info": float},
+        "sentiment": "positive" | "negative" | "neutral",
+        "reason": string
+    }
+    """
+    try:
+        classification = classify_text(request.text)
+        classification["is_valid"] = is_valid_complaint(classification, request.min_confidence)
+        return classification
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Classification error: {exc}") from exc
+
+
+@app.post("/classify-bulk")
+def classify_complaints_bulk(requests: list):
+    """
+    Classify multiple complaints at once
+    
+    Expects: [{"text": "...", "min_confidence": 0.6}, ...]
+    Returns: [{"type": "...", "confidence": ..., "is_valid": ..., ...}, ...]
+    """
+    try:
+        results = []
+        for req in requests:
+            text = req.get("text", "")
+            min_conf = req.get("min_confidence", 0.6)
+            
+            classification = classify_text(text)
+            classification["is_valid"] = is_valid_complaint(classification, min_conf)
+            results.append(classification)
+        
+        return {"classified_count": len(results), "results": results}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Bulk classification error: {exc}") from exc

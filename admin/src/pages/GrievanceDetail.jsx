@@ -153,6 +153,14 @@ function GrievanceDetail() {
                 currentStatus: stage,
             }),
         });
+        if (response.ok) {
+            setCurrentStatus(stage);
+            setGrievance({ ...grievance, currentStatus: stage });
+            alert("✅ Process updated successfully!");
+        } else {
+            alert("❌ Failed to update process status.");
+            return;
+        }
         if (stage === "Resolution Provided") {
             setShowPopup(true);
             setShowConfetti(true);

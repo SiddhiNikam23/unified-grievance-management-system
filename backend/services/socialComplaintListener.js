@@ -6,6 +6,7 @@ const { detectDuplicateComplaints, linkComplaints } = require("./duplicateDetect
 const { onComplaintRegistered } = require("./notificationEngine");
 const { calculateBacklogAwareEta } = require("./etaService");
 const { upsertEvidenceFromComplaint, verifyRecentEvidence } = require("./socialProofEngine");
+const ComplaintClassifierService = require("./complaintClassifier");
 
 const parser = new Parser();
 
@@ -26,6 +27,8 @@ const COMPLAINT_KEYWORDS = [
 ];
 
 const TRACKED_HASHTAGS = [
+  "#nagrikconnect",
+  "#nagrikconnectai",
   "#pipelineissue",
   "#waterleak",
   "#roadrepair",
@@ -64,7 +67,15 @@ const CIVIC_CONTEXT_TERMS = [
   "power cut",
   "transformer",
   "public road",
-  "repair"
+  "repair",
+  "labour",
+  "labor",
+  "employment",
+  "wage",
+  "salary",
+  "epf",
+  "pf",
+  "workplace"
 ];
 
 const NON_CIVIC_BLOCKLIST = [
@@ -109,6 +120,27 @@ const ISSUE_RULES = [
     category: "health_sanitation",
     subcategory: "waste_management",
     terms: ["garbage", "trash", "waste", "dump", "unclean", "overflowing bin"]
+  },
+  {
+    issueType: "Labour",
+    department: "Labour and Employment",
+    category: "public_services",
+    subcategory: "labour_employment",
+    terms: [
+      "labour",
+      "labor",
+      "employment",
+      "salary",
+      "wage",
+      "wages",
+      "job",
+      "pf",
+      "epf",
+      "gratuity",
+      "workplace",
+      "contract",
+      "contractor"
+    ]
   },
   {
     issueType: "Cyber Crime",
@@ -416,6 +448,46 @@ async function upsertComplaintFromPost(post) {
     : 0;
 
   const priority = toPriority(sentimentTag, duplicateCount);
+  
+  // ✅ NEW: AI Classification using Python API
+  let aiClassification = {
+    type: "UNCLASSIFIED",
+    confidence: 0,
+    is_valid: false,
+    scores: { help: 0, resolved: 0, spam: 0, info: 0 },
+    sentiment: "neutral",
+    reason: "Skipped"
+  };
+
+  try {
+    console.log(`[AI-Classifier] Classifying: "${text.slice(0, 60)}..."`);
+    aiClassification = await ComplaintClassifierService.classifyComplaint(text, 0.6);
+    console.log(`[AI-Classifier] Result: ${aiClassification.type} (${aiClassification.confidence.toFixed(2)})`);
+  } catch (classifyError) {
+    console.warn("[AI-Classifier] Classification failed:", classifyError.message);
+  }
+
+  // Reject if AI marks as spam/resolved (high confidence)
+  if (aiClassification.type === "SPAM" && aiClassification.confidence > 0.75) {
+    console.log(`[AI-Classifier] ❌ Rejected as SPAM (${aiClassification.confidence.toFixed(2)})`);
+    return { 
+      status: "ignored", 
+      reason: "failed-ai-spam-filter", 
+      aiType: aiClassification.type,
+      aiConfidence: aiClassification.confidence
+    };
+  }
+
+  if (aiClassification.type === "RESOLVED" && aiClassification.confidence > 0.8) {
+    console.log(`[AI-Classifier] ✅ Already resolved, skipping`);
+    return { 
+      status: "ignored", 
+      reason: "already-resolved", 
+      aiType: aiClassification.type,
+      aiConfidence: aiClassification.confidence
+    };
+  }
+
   let etaData;
 
   try {
@@ -487,6 +559,16 @@ async function upsertComplaintFromPost(post) {
     etaCalculatedAt: etaData.calculatedAt,
     sentimentTag,
     validityScore,
+    
+    // ✅ NEW: AI Classification Results
+    aiClassification: aiClassification.type,
+    aiConfidence: aiClassification.confidence,
+    aiScores: aiClassification.scores,
+    aiSentiment: aiClassification.sentiment,
+    isValidComplaint: aiClassification.is_valid,
+    aiClassificationReason: aiClassification.reason,
+    classifiedAt: new Date(),
+    
     moderationStatus: "Pending",
     moderationReason: "Awaiting admin verification",
     detectedAt: new Date(),
@@ -732,6 +814,10 @@ function startSocialComplaintListener(options = {}) {
     options.intervalMinutes || process.env.SOCIAL_SCAN_INTERVAL_MINUTES || 3
   );
   const safeInterval = Math.max(1, intervalMinutes) * 60 * 1000;
+  const initialDelayMs = Math.max(
+    0,
+    Number(options.initialDelayMs || process.env.SOCIAL_INITIAL_SCAN_DELAY_MS || 1000)
+  );
 
   running = true;
   pollTimer = setInterval(async () => {
@@ -754,7 +840,7 @@ function startSocialComplaintListener(options = {}) {
     } catch (error) {
       console.error("[social-listener] initial scan failed:", error.message);
     }
-  }, 5000);
+  }, initialDelayMs);
 
   return pollTimer;
 }

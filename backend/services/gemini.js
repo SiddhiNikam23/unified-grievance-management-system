@@ -1,5 +1,73 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+function isGeminiQuotaError(error) {
+  const message = String(error?.message || "");
+  return (
+    message.includes("429") ||
+    message.includes("Too Many Requests") ||
+    message.includes("quota") ||
+    message.includes("RATE_LIMIT") ||
+    message.includes("RESOURCE_EXHAUSTED")
+  );
+}
+
+function buildFallbackResolution(grievanceData) {
+  const department = grievanceData.department || "the relevant department";
+  const category = grievanceData.category || "General";
+  const subcategory = grievanceData.subcategory || "Other";
+  const description = grievanceData.description || "The reported grievance";
+
+  return `AI RESOLVED: NO
+PROBLEM ANALYSIS:
+The grievance has been reviewed for basic routing. The issue appears to require manual officer review because the AI resolution service is temporarily unavailable.
+
+STEP-BY-STEP SOLUTION:
+Step 1: Acknowledge the grievance
+* Review the complaint details carefully
+* Confirm the department and category
+* Record the complaint for manual follow-up
+
+Step 2: Verify supporting information
+* Check the grievance description
+* Review any attached documents or photos
+* Contact the complainant if additional details are needed
+
+Step 3: Assign to the proper officer
+* Forward the grievance to ${department}
+* Ask the officer to verify the case under ${category} / ${subcategory}
+* Update the complaint once the review is completed
+
+REQUIRED DOCUMENTS:
+1. Complaint reference number - for tracking
+2. Supporting photos or documents - for verification
+3. Identity proof - if officer confirmation is required
+
+CONTACT INFORMATION:
+Office Name: ${department} Grievance Office
+Address: Please refer to the official local office for manual review
+Phone: Use the official department helpline
+Email: Use the official departmental grievance email
+Website: Use the department's official portal
+Office Hours: Standard government office hours
+
+EXPECTED TIMELINE:
+* Manual review: Within 1-2 working days
+* Officer verification: Within 3-5 working days
+* Final response: Based on department workload
+
+ESCALATION PROCESS:
+If not resolved within the expected timeline:
+1. Follow up with the assigned grievance officer
+2. Escalate to the department nodal officer
+3. Raise a higher-level complaint through the official grievance channel
+
+IMPORTANT NOTES:
+* This draft was generated because the AI service reached its quota limit
+* The grievance should still be handled by the department
+* The complaint content was: ${description}
+* Please review and refine this draft before final approval`;
+}
 async function getGeminiResponse(prompt, language = "en") {
   try {
     const model = genAI.getGenerativeModel({
@@ -235,7 +303,16 @@ IMPORTANT NOTES:
 * Follow up regularly every 2-3 days until issue is resolved
 * Consumer rights are protected under Electricity Act 2003
 NOW PROVIDE A SIMILAR DETAILED RESPONSE FOR THE ACTUAL GRIEVANCE ABOVE. Use real government office names, actual helpline numbers, and specific procedures based on the department and location. Keep formatting simple and clean.`;
-  const response = await getGeminiResponse(prompt);
+  let response;
+  try {
+    response = await getGeminiResponse(prompt);
+  } catch (error) {
+    if (!isGeminiQuotaError(error)) {
+      throw error;
+    }
+    console.warn("Gemini quota reached for AI resolution generation. Using fallback resolution text.");
+    response = buildFallbackResolution(grievanceData);
+  }
   const isAIResolved = response.toUpperCase().includes("AI RESOLVED: YES");
   return {
     resolutionText: response,

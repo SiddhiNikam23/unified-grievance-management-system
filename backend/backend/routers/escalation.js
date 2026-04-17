@@ -1,1 +1,49 @@
-const express = require('express');const router = express.Router();const {     autoEscalateGrievances,     getEscalatedGrievances,     manualEscalate } = require('../services/escalationEngine');const { checkLogin } = require('../middlewares/auth');router.get('/escalated', checkLogin, async (req, res) => {    try {        const escalated = await getEscalatedGrievances();        res.json(escalated);    } catch (error) {        console.error('Error fetching escalated grievances:', error);        res.status(500).json({ error: 'Failed to fetch escalated grievances' });    }});router.post('/escalate/:grievanceCode', checkLogin, async (req, res) => {    try {        const { grievanceCode } = req.params;        const { reason } = req.body;        const escalatedBy = req.user.user.email;        const grievance = await manualEscalate(grievanceCode, reason, escalatedBy);        res.json({             success: true,             message: 'Grievance escalated successfully',            grievance         });    } catch (error) {        console.error('Error escalating grievance:', error);        res.status(400).json({ error: error.message });    }});router.post('/check-escalations', async (req, res) => {    try {        const count = await autoEscalateGrievances();        res.json({             success: true,             message: `Auto-escalation check complete. ${count} grievance(s) escalated.`,            escalatedCount: count         });    } catch (error) {        console.error('Error in escalation check:', error);        res.status(500).json({ error: 'Escalation check failed' });    }});module.exports = router;
+// APIs for urgent complaints.
+
+const express = require('express');
+const router = express.Router();
+const { 
+    autoEscalateGrievances, 
+    getEscalatedGrievances, 
+    manualEscalate 
+} = require('../services/escalationEngine');
+const { checkLogin } = require('../middlewares/auth');
+router.get('/escalated', checkLogin, async (req, res) => {
+    try {
+        const escalated = await getEscalatedGrievances();
+        res.json(escalated);
+    } catch (error) {
+        console.error('Error fetching escalated grievances:', error);
+        res.status(500).json({ error: 'Failed to fetch escalated grievances' });
+    }
+});
+router.post('/escalate/:grievanceCode', checkLogin, async (req, res) => {
+    try {
+        const { grievanceCode } = req.params;
+        const { reason } = req.body;
+        const escalatedBy = req.user.user.email;
+        const grievance = await manualEscalate(grievanceCode, reason, escalatedBy);
+        res.json({ 
+            success: true, 
+            message: 'Grievance escalated successfully',
+            grievance 
+        });
+    } catch (error) {
+        console.error('Error escalating grievance:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+router.post('/check-escalations', async (req, res) => {
+    try {
+        const count = await autoEscalateGrievances();
+        res.json({ 
+            success: true, 
+            message: `Auto-escalation check complete. ${count} grievance(s) escalated.`,
+            escalatedCount: count 
+        });
+    } catch (error) {
+        console.error('Error in escalation check:', error);
+        res.status(500).json({ error: 'Escalation check failed' });
+    }
+});
+module.exports = router;
